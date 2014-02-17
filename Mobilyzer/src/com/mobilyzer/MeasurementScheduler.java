@@ -81,6 +81,8 @@ public class MeasurementScheduler extends Service {
   private int checkinRetryCnt;
   private CheckinTask checkinTask;
   private Calendar lastCheckinTime;
+  
+  private int batteryThreshold;
 
 
   private PhoneUtils phoneUtils;
@@ -134,6 +136,8 @@ public class MeasurementScheduler extends Service {
     this.checkinRetryIntervalSec = Config.MIN_CHECKIN_RETRY_INTERVAL_SEC;
     this.checkinRetryCnt = 0;
     this.checkinTask = new CheckinTask();
+    
+    this.batteryThreshold=Config.DEFAULT_BATTERY_THRESH_PRECENT;
 
     this.pauseRequested = false;
     this.stopRequested = false;
@@ -485,7 +489,23 @@ public class MeasurementScheduler extends Service {
     }
     return false;
   }
-
+  /**
+   * 
+   * @param newBatteryThresh
+   * @return the final value of battery threshold
+ */
+  //API should ensure that the value is between 0 and 100
+  public synchronized int setBatteryThresh(int newBatteryThresh){
+    if(newBatteryThresh>this.batteryThreshold){
+      this.batteryThreshold=newBatteryThresh;
+    }
+    return this.batteryThreshold;
+  }
+  
+  public synchronized int getBatteryThresh(){
+    return this.batteryThreshold;
+  }
+  
   @Override
   public void onDestroy() {
     Logger.d("MeasurementScheduler -> onDestroy");
@@ -795,7 +815,7 @@ public class MeasurementScheduler extends Service {
   }
 
   /** Set the interval for checkin in seconds */
-  public synchronized void setCheckinInterval(long interval) {
+  public synchronized long setCheckinInterval(long interval) {
     Logger.i("Setting Checkin Interval");
     this.checkinIntervalSec = Math.max(Config.MIN_CHECKIN_INTERVAL_SEC, interval);
     // the new checkin schedule will start
@@ -807,13 +827,14 @@ public class MeasurementScheduler extends Service {
         + Config.PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC, checkinIntervalSec * 1000, checkinIntentSender);
 
     Logger.i("Setting checkin interval to " + interval + " seconds");
+    return this.checkinIntervalSec;
   }
 
   /**
    * Perform a checkin operation.
    */
   public void handleCheckin() {
-    if (PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() < Config.MIN_BATTERY_THRESHOLD) {
+    if (PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() < getBatteryThresh()) {
       return;
     }
     /*

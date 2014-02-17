@@ -16,6 +16,8 @@ public interface Config {
   public static final String DEFAULT_USER = "Anonymous";
 
   public static final int MAX_TASK_QUEUE_SIZE = 100;
+  
+  public static final int DEFAULT_BATTERY_THRESH_PRECENT = 60;
 
   public static final String USER_AGENT = "Linux; Android";
   public static final String DEFAULT_USER_AGENT = "MobiPerf-2.0 (Linux; Android)";
