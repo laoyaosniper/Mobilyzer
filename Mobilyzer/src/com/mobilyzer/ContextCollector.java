@@ -35,7 +35,8 @@ public class ContextCollector {
   private Timer timer;
   private volatile boolean isRunning;
   private int count;
-
+  public String ipconnectivity = "NOT SUPPORTED";
+  public String dnsresolvability = "NOT SUPPORTED";
   public ContextCollector() {
     phoneUtils = PhoneUtils.getPhoneUtils();
     this.isRunning = false;
@@ -75,7 +76,11 @@ public class ContextCollector {
     long recvPkt = 0;
     long intervalPktSend = 0;
     long intervalPktRecv = 0;
-
+    
+    PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
+    ipconnectivity = phoneUtils.getIpConnectivity();
+    dnsresolvability = phoneUtils.getDnResolvability();
+  
     sendBytes = TrafficStats.getMobileTxBytes();
     recvBytes = TrafficStats.getMobileRxBytes();
     sendPkt = TrafficStats.getMobileTxPackets();
@@ -135,8 +140,24 @@ public class ContextCollector {
     contextResultArray.add(getCurrentContextInfo());
     return contextResultArray;
   }
-
-
+  
+  /**
+   * Return the current Ip connectivity
+   * 
+   * @return A string that represents the current ip connectivity.
+   */
+  public String getCurrentIPConnectivity(){
+	  return ipconnectivity;
+  }
+  
+  /**
+   * Return the current DNS resolvability
+   * 
+   * @return A string that represents the current DNS resolvability.
+   */
+  public String getCurrentDNSResolvability(){
+	  return dnsresolvability;
+  } 
 
   private TimerTask timerTask = new TimerTask() {
     @Override

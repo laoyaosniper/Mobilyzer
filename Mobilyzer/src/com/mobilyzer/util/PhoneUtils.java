@@ -806,6 +806,7 @@ public class PhoneUtils {
 //    String ipConnectivity = getIpConnectivity();
 //    String dnResolvability = getDnResolvability();
     // Hongyi: deal with MLab server failure
+    // Jack: If ContextCollector is supported, you can use getCurrentIpConnectivity() and getCurrentDNSResolvability() to get these info.
     String ipConnectivity = "NOT SUPPORTED";
     String dnResolvability = "NOT SUPPORTED";
     Logger.w("IP connectivity is " + ipConnectivity);
