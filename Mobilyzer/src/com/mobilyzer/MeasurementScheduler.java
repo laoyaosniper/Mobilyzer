@@ -61,6 +61,10 @@ public class MeasurementScheduler extends Service {
   public enum TaskStatus {// TODO changing paused to scheduled?
     FINISHED, PAUSED, CANCELLED, SCHEDULED, RUNNING, NOTFOUND
   }
+  
+  public enum DataUsageProfile{
+    PROFILE1 , PROFILE2, PROFILE3, PROFILE4, UNLIMITED
+  }
 
   private ExecutorService measurementExecutor;
   private BroadcastReceiver broadcastReceiver;
@@ -77,6 +81,8 @@ public class MeasurementScheduler extends Service {
   private Calendar lastCheckinTime;
   
   private int batteryThreshold;
+//  private int dataLimit;//in Byte
+  private DataUsageProfile dataUsageProfile;
 
 
   private PhoneUtils phoneUtils;
@@ -132,6 +138,7 @@ public class MeasurementScheduler extends Service {
     this.checkinTask = new CheckinTask();
     
     this.batteryThreshold=Config.DEFAULT_BATTERY_THRESH_PRECENT;
+    this.dataUsageProfile=DataUsageProfile.PROFILE3;
 
     this.pauseRequested = false;
     this.stopRequested = false;
@@ -502,6 +509,66 @@ public class MeasurementScheduler extends Service {
     return this.batteryThreshold;
   }
   
+  public synchronized void setDataUsageLimit(DataUsageProfile profile){
+    if(this.dataUsageProfile.ordinal()>profile.ordinal()){
+      this.dataUsageProfile=profile;
+    }
+  }
+  
+  public synchronized DataUsageProfile getDataUsageProfile(){
+    return this.dataUsageProfile;
+  }
+  
+  /**
+  * Adjusts the frequency of the task based on the profile passed from the server.
+  *
+  * Alternately, disregards the task altogether, if a -1 is passed.
+  *
+  * @param task The task to adjust
+  * @return false if the task should not be scheduled, based on the profile
+  */
+    private boolean adjustInterval(MeasurementTask task) {
+
+      Map<String, String> params = task.getDescription().parameters;
+      float adjust = 1; // default
+      if (params.containsKey("profile_1_freq")
+          && getDataUsageProfile() == DataUsageProfile.PROFILE1) {
+        adjust = Float.parseFloat(params.get("profile_1_freq"));
+        Logger.i("Task " + task.getDescription().key
+            + " adjusted using profile 1");
+      } else if (params.containsKey("profile_2_freq")
+          && getDataUsageProfile() == DataUsageProfile.PROFILE2) {
+        adjust = Float.parseFloat(params.get("profile_2_freq"));
+        Logger.i("Task " + task.getDescription().key
+            + " adjusted using profile 2");
+      } else if (params.containsKey("profile_3_freq")
+          && getDataUsageProfile() == DataUsageProfile.PROFILE3) {
+        adjust = Float.parseFloat(params.get("profile_3_freq"));
+        Logger.i("Task " + task.getDescription().key
+            + " adjusted using profile 3");
+      } else if (params.containsKey("profile_4_freq")
+          && getDataUsageProfile() == DataUsageProfile.PROFILE4) {
+        adjust = Float.parseFloat(params.get("profile_4_freq"));
+        Logger.i("Task " + task.getDescription().key
+            + " adjusted using profile 4");
+      } else if (params.containsKey("profile_unlimited")
+          && getDataUsageProfile() == DataUsageProfile.UNLIMITED) {
+        adjust = Float.parseFloat(params.get("profile_unlimited"));
+        Logger.i("Task " + task.getDescription().key
+            + " adjusted using unlimited profile");
+      }
+      if (adjust <= 0) {
+        Logger.i("Task " + task.getDescription().key + "marked for removal");
+        return false;
+      }
+      task.getDescription().intervalSec *= adjust;
+      Calendar now = Calendar.getInstance();
+      now.add(Calendar.SECOND, (int)task.getDescription().intervalSec);
+      task.getDescription().startTime = now.getTime();
+      return true;
+
+    }
+  
   @Override
   public void onDestroy() {
     Logger.d("MeasurementScheduler -> onDestroy");
@@ -653,7 +720,10 @@ public class MeasurementScheduler extends Service {
     for (MeasurementTask task : tasksFromServer) {
       Logger.i("added task: " + task.toString());
       task.measurementDesc.key = Config.SERVER_TASK_CLIENT_KEY;
-      this.mainQueue.add(task);
+      if (adjustInterval(task)) {
+        this.mainQueue.add(task);
+
+      }
     }
   }
 
