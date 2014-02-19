@@ -77,6 +77,9 @@ public final class API {
   public String userResultAction;
   public static final String SERVER_RESULT_ACTION =
       UpdateIntent.SERVER_RESULT_ACTION;
+  public String batteryThresholdAction;
+  public String checkinIntervalAction;
+  public String taskStatusAction;
   
   public final static int USER_PRIORITY = MeasurementTask.USER_PRIORITY;
   public final static int INVALID_PRIORITY = MeasurementTask.INVALID_PRIORITY;
@@ -105,6 +108,12 @@ public final class API {
     this.clientKey = clientKey;
 
     this.userResultAction = UpdateIntent.USER_RESULT_ACTION + "." + clientKey;
+    
+    this.batteryThresholdAction = UpdateIntent.BATTERY_THRESHOLD_ACTION + "."
+        + clientKey;
+    this.checkinIntervalAction = UpdateIntent.CHECKIN_INTERVAL_ACTION + "."
+        + clientKey;
+    this.taskStatusAction = UpdateIntent.TASK_STATUS_ACTION + "." + clientKey;
     bind();
   }
 
@@ -315,29 +324,21 @@ public final class API {
    */
   public void submitTask ( MeasurementTask task )
       throws MeasurementError {
-    Messenger messenger = getScheduler();
-    if ( messenger != null ) {
+    if ( task != null ) {
       // Hongyi: for delay measurement
       task.getDescription().parameters.put("ts_api_send",
         String.valueOf(System.currentTimeMillis()));
-      
+
       Logger.d("Adding new task");
       Message msg = Message.obtain(null, Config.MSG_SUBMIT_TASK);
       Bundle data = new Bundle();
-      if ( task != null ) {
-        data.putParcelable("measurementTask", task);
-        msg.setData(data);  
-        try {
-          messenger.send(msg);
-        } catch (RemoteException e) {
-          String err = "remote scheduler failed!";
-          Logger.e(err);
-          throw new MeasurementError(err);
-        }
-      }
+      data.putParcelable(UpdateIntent.MEASUREMENT_TASK_PAYLOAD, task);
+      data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+      msg.setData(data);  
+      sendMessage(msg);
     }
     else {
-      String err = "scheduler doesn't exist";
+      String err = "submitTask: task is null";
       Logger.e(err);
       throw new MeasurementError(err);
     }
@@ -350,29 +351,99 @@ public final class API {
    * @throws InvalidParameterException
    */
   public void cancelTask(String taskId) throws MeasurementError{
-    Messenger messenger = getScheduler();
-    if ( messenger != null ) {
+    if ( taskId != null ) {
       Message msg = Message.obtain(null, Config.MSG_CANCEL_TASK);      
       Bundle data = new Bundle();
       Logger.d("API: CANCEL task " + taskId);
-      data.putString("taskId", taskId);
-      data.putString("clientKey", clientKey);
+      data.putString(UpdateIntent.TASKID_PAYLOAD, taskId);
+      data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
       msg.setData(data);  
+      sendMessage(msg);
+    }
+    else {
+      String err = "cancelTask: taskId is null";
+      Logger.e(err);
+      throw new MeasurementError(err);
+    }
+  }
+
+  public void setBatteryThreshold(int threshold) throws MeasurementError {
+    if ( threshold > 100 || threshold <= 0 ) {
+      String err = "Battery threshold should stay between 0 and 100";
+      Logger.e(err);
+      throw new MeasurementError(err);
+    }
+    Message msg = Message.obtain(null, Config.MSG_SET_BATTERY_THRESHOLD);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    data.putInt(UpdateIntent.BATTERY_THRESHOLD_PAYLOAD, threshold);
+    msg.setData(data);
+    Logger.d("Attempt setting battery threashold to " + threshold);
+    sendMessage(msg);
+  }
+  
+  public void getBatteryThreshold() throws MeasurementError {
+    Message msg = Message.obtain(null, Config.MSG_GET_BATTERY_THRESHOLD);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    msg.setData(data);
+    Logger.d("Attempt getting battery threashold");
+    sendMessage(msg);
+  }
+  
+  public void setCheckinInterval(long interval) throws MeasurementError {
+    if ( interval < Config.MIN_CHECKIN_INTERVAL_SEC ) {
+      String err = "Checkin interval should be greater than "
+          + Config.MIN_CHECKIN_INTERVAL_SEC;
+      Logger.e(err);
+      throw new MeasurementError(err);
+    }
+    Message msg = Message.obtain(null, Config.MSG_SET_CHECKIN_INTERVAL);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    data.putLong(UpdateIntent.CHECKIN_INTERVAL_PAYLOAD, interval);
+    msg.setData(data);
+    Logger.d("Attempt setting checkin interval to " + interval);
+    sendMessage(msg);
+    
+  }
+  
+  public void getCheckinInterval() throws MeasurementError {
+    Message msg = Message.obtain(null, Config.MSG_GET_CHECKIN_INTERVAL);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    msg.setData(data);
+    Logger.d("Attempt getting checkin interval");
+    sendMessage(msg);
+  }
+  
+  public void getTaskStatus(String taskId) throws MeasurementError {
+    Message msg = Message.obtain(null, Config.MSG_GET_TASK_STATUS);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    data.putString(UpdateIntent.TASKID_PAYLOAD, taskId);
+    msg.setData(data);
+    Logger.d("Attempt getting task status");
+    sendMessage(msg);
+  }
+  
+  private void sendMessage(Message msg) throws MeasurementError {
+    Messenger messenger = getScheduler();
+    if ( messenger != null ) {
       try {
         messenger.send(msg);
       } catch (RemoteException e) {
         String err = "remote scheduler failed!";
         Logger.e(err);
         throw new MeasurementError(err);
-      }      
+      }   
     }
     else {
-      String err = "scheduler doesn't exist";
+      String err = "Scheduler doesn't exist";
       Logger.e(err);
       throw new MeasurementError(err);
     }
   }
-
   /** Gets the currently available measurement descriptions*/
   public static Set<String> getMeasurementNames() {
     return MeasurementTask.getMeasurementNames();

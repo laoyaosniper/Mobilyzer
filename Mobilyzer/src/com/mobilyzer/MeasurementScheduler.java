@@ -18,9 +18,6 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
-import java.util.Map;
-
-import java.util.HashMap;
 import java.util.List;
 
 import java.util.Vector;
@@ -47,12 +44,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.Bundle;
 import android.os.IBinder;
-import android.os.Message;
 import android.os.Messenger;
 import android.os.Parcelable;
-import android.os.RemoteException;
 /**
  * 
  * @author Ashkan Nikravesh (ashnik@umich.edu) + others
@@ -163,7 +157,7 @@ public class MeasurementScheduler extends Service {
           handleMeasurement();
         } else if (intent.getAction().equals(UpdateIntent.MEASUREMENT_PROGRESS_UPDATE_ACTION)) {
           String taskid = intent.getStringExtra(UpdateIntent.TASKID_PAYLOAD);
-          String taskKey = intent.getStringExtra(UpdateIntent.TASKKEY_PAYLOAD);
+          String taskKey = intent.getStringExtra(UpdateIntent.CLIENTKEY_PAYLOAD);
           int priority =
               intent.getIntExtra(UpdateIntent.TASK_PRIORITY_PAYLOAD,
                   MeasurementTask.INVALID_PRIORITY);
@@ -207,6 +201,7 @@ public class MeasurementScheduler extends Service {
     this.registerReceiver(broadcastReceiver, filter);
   }
 
+  // TODO(Hongyi): we don't need to call startService first. Remove it?
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
     Logger.d("MeasurementScheduler -> onStartCommand, isSchedulerStarted = " + isSchedulerStarted);
@@ -300,7 +295,7 @@ public class MeasurementScheduler extends Service {
                   new CancellationException("Task cancelled!"));
           intent.putExtra(UpdateIntent.RESULT_PAYLOAD, tempResults);
           intent.putExtra(UpdateIntent.TASKID_PAYLOAD, ready.getTaskId());
-          intent.putExtra(UpdateIntent.TASKKEY_PAYLOAD, ready.getKey());
+          intent.putExtra(UpdateIntent.CLIENTKEY_PAYLOAD, ready.getKey());
           MeasurementScheduler.this.sendBroadcast(intent);
           handleMeasurement();
         } else {
@@ -452,9 +447,9 @@ public class MeasurementScheduler extends Service {
       return false;
     }
 
+    Logger.e("Cancel task " + taskId + " from " + clientKey);
     if (taskId != null && idToClientKey.containsKey(taskId)) {
       if (idToClientKey.get(taskId).equals(clientKey)) {
-
         boolean found = false;
         for (Object object : mainQueue) {
           MeasurementTask task = (MeasurementTask) object;
@@ -472,6 +467,7 @@ public class MeasurementScheduler extends Service {
           }
         }
         MeasurementTask currentMeasumrentTask = getCurrentTask();
+        Logger.e("current taskId " + currentMeasumrentTask.getTaskId());
         if (currentMeasumrentTask != null && currentMeasumrentTask.getTaskId().equals(taskId)
             && currentMeasumrentTask.getKey().equals(clientKey)) {
           for (MeasurementTask mt : pendingTasks.keySet()) {

@@ -12,11 +12,15 @@ public class UpdateIntent extends Intent {
   // Different types of payloads that this intent can carry:
   public static final String MSG_PAYLOAD = "MSG_PAYLOAD";
   
-  public static final String TASK_STATUS_PAYLOAD = "TASK_STATUS_PAYLOAD";
   public static final String TASKID_PAYLOAD = "TASKID_PAYLOAD";
-  public static final String TASKKEY_PAYLOAD = "TASKKEY_PAYLOAD";
+  public static final String CLIENTKEY_PAYLOAD = "CLIENTKEY_PAYLOAD";
   public static final String TASK_PRIORITY_PAYLOAD = "TASK_PRIORITY_PAYLOAD";
   public static final String RESULT_PAYLOAD = "RESULT_PAYLOAD";
+  
+  public static final String MEASUREMENT_TASK_PAYLOAD = "MEASUREMENT_TASK_PAYLOAD";
+  public static final String BATTERY_THRESHOLD_PAYLOAD = "BATTERY_THRESHOLD_PAYLOAD";
+  public static final String CHECKIN_INTERVAL_PAYLOAD = "CHECKIN_INTERVAL_PAYLOAD";
+  public static final String TASK_STATUS_PAYLOAD = "TASK_STATUS_PAYLOAD";
   
   
   // Different types of actions that this intent can represent:
@@ -38,6 +42,12 @@ public class UpdateIntent extends Intent {
       PACKAGE_PREFIX + ".USER_RESULT_ACTION";  
   public static final String SERVER_RESULT_ACTION =
       PACKAGE_PREFIX + ".SERVER_RESULT_ACTION";
+  public static final String BATTERY_THRESHOLD_ACTION =
+      PACKAGE_PREFIX + ".BATTERY_THRESHOLD_ACTION";
+  public static final String CHECKIN_INTERVAL_ACTION =
+      PACKAGE_PREFIX + ".CHECKIN_INTERVAL_ACTION";
+  public static final String TASK_STATUS_ACTION =
+      PACKAGE_PREFIX + ".TASK_STATUS_ACTION";
 
   /**
    * Creates an intent of the specified action with an optional message

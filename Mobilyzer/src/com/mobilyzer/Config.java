@@ -40,6 +40,12 @@ public interface Config {
   public static final int MSG_SUBMIT_TASK = 1;
   public static final int MSG_RESULT = 2;
   public static final int MSG_CANCEL_TASK = 3;
+  public static final int MSG_SET_BATTERY_THRESHOLD = 4;
+  public static final int MSG_GET_BATTERY_THRESHOLD = 5;
+  public static final int MSG_SET_CHECKIN_INTERVAL = 6;
+  public static final int MSG_GET_CHECKIN_INTERVAL = 7;
+  public static final int MSG_GET_TASK_STATUS = 8;
+  
 
   /** The default battery level if we cannot read it from the system */
   public static final int DEFAULT_BATTERY_LEVEL = 0;
