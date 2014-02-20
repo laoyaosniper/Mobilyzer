@@ -45,6 +45,8 @@ public interface Config {
   public static final int MSG_SET_CHECKIN_INTERVAL = 6;
   public static final int MSG_GET_CHECKIN_INTERVAL = 7;
   public static final int MSG_GET_TASK_STATUS = 8;
+  public static final int MSG_SET_DATA_USAGE = 9;
+  public static final int MSG_GET_DATA_USAGE = 10;
   
 
   /** The default battery level if we cannot read it from the system */

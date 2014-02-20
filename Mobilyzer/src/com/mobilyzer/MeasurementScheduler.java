@@ -19,6 +19,7 @@ import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import java.util.Vector;
 import java.util.concurrent.CancellationException;
@@ -63,7 +64,7 @@ public class MeasurementScheduler extends Service {
   }
   
   public enum DataUsageProfile{
-    PROFILE1 , PROFILE2, PROFILE3, PROFILE4, UNLIMITED
+    PROFILE1 , PROFILE2, PROFILE3, PROFILE4, UNLIMITED, NOTFOUND
   }
 
   private ExecutorService measurementExecutor;
@@ -325,9 +326,9 @@ public class MeasurementScheduler extends Service {
         MeasurementTask waiting = mainQueue.peek();
         if (waiting != null) {
           long timeFromExecution = task.timeFromExecution();
-          measurementIntentSender =
-              PendingIntent.getBroadcast(this, 0, new UpdateIntent("",
-                  UpdateIntent.MEASUREMENT_ACTION), PendingIntent.FLAG_CANCEL_CURRENT);
+          measurementIntentSender = PendingIntent.getBroadcast(this, 0
+              , new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION)
+              , PendingIntent.FLAG_CANCEL_CURRENT);
           alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + timeFromExecution,
               measurementIntentSender);
           setCurrentTask(null);// TODO
@@ -388,9 +389,9 @@ public class MeasurementScheduler extends Service {
             mainQueue.add(newTask);
             mainQueue.add(current);
             long timeFromExecution = newTask.timeFromExecution();
-            measurementIntentSender =
-                PendingIntent.getBroadcast(this, 0, new UpdateIntent("",
-                    UpdateIntent.MEASUREMENT_ACTION), PendingIntent.FLAG_CANCEL_CURRENT);
+            measurementIntentSender = PendingIntent.getBroadcast(this, 0
+              , new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION)
+              , PendingIntent.FLAG_CANCEL_CURRENT);
             alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
                 + timeFromExecution, measurementIntentSender);
             setCurrentTask(newTask);
@@ -407,9 +408,9 @@ public class MeasurementScheduler extends Service {
             mainQueue.add(newTask);
             mainQueue.add(current);
             long timeFromExecution = newTask.timeFromExecution();
-            measurementIntentSender =
-                PendingIntent.getBroadcast(this, 0, new UpdateIntent("",
-                    UpdateIntent.MEASUREMENT_ACTION), PendingIntent.FLAG_CANCEL_CURRENT);
+            measurementIntentSender = PendingIntent.getBroadcast(this, 0
+              , new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION)
+              , PendingIntent.FLAG_CANCEL_CURRENT);
             alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
                 + timeFromExecution, measurementIntentSender);
             // setCurrentTask(null);
@@ -427,9 +428,9 @@ public class MeasurementScheduler extends Service {
         } else {
           mainQueue.add(newTask);
           long timeFromExecution = newTask.timeFromExecution();
-          measurementIntentSender =
-              PendingIntent.getBroadcast(this, 0, new UpdateIntent("",
-                  UpdateIntent.MEASUREMENT_ACTION), PendingIntent.FLAG_CANCEL_CURRENT);
+          measurementIntentSender = PendingIntent.getBroadcast(this, 0
+            , new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION)
+            , PendingIntent.FLAG_CANCEL_CURRENT);
           alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + timeFromExecution,
               measurementIntentSender);
           // setCurrentTask(null);
@@ -527,47 +528,47 @@ public class MeasurementScheduler extends Service {
   * @param task The task to adjust
   * @return false if the task should not be scheduled, based on the profile
   */
-    private boolean adjustInterval(MeasurementTask task) {
+  private boolean adjustInterval(MeasurementTask task) {
 
-      Map<String, String> params = task.getDescription().parameters;
-      float adjust = 1; // default
-      if (params.containsKey("profile_1_freq")
-          && getDataUsageProfile() == DataUsageProfile.PROFILE1) {
-        adjust = Float.parseFloat(params.get("profile_1_freq"));
-        Logger.i("Task " + task.getDescription().key
-            + " adjusted using profile 1");
-      } else if (params.containsKey("profile_2_freq")
-          && getDataUsageProfile() == DataUsageProfile.PROFILE2) {
-        adjust = Float.parseFloat(params.get("profile_2_freq"));
-        Logger.i("Task " + task.getDescription().key
-            + " adjusted using profile 2");
-      } else if (params.containsKey("profile_3_freq")
-          && getDataUsageProfile() == DataUsageProfile.PROFILE3) {
-        adjust = Float.parseFloat(params.get("profile_3_freq"));
-        Logger.i("Task " + task.getDescription().key
-            + " adjusted using profile 3");
-      } else if (params.containsKey("profile_4_freq")
-          && getDataUsageProfile() == DataUsageProfile.PROFILE4) {
-        adjust = Float.parseFloat(params.get("profile_4_freq"));
-        Logger.i("Task " + task.getDescription().key
-            + " adjusted using profile 4");
-      } else if (params.containsKey("profile_unlimited")
-          && getDataUsageProfile() == DataUsageProfile.UNLIMITED) {
-        adjust = Float.parseFloat(params.get("profile_unlimited"));
-        Logger.i("Task " + task.getDescription().key
-            + " adjusted using unlimited profile");
-      }
-      if (adjust <= 0) {
-        Logger.i("Task " + task.getDescription().key + "marked for removal");
-        return false;
-      }
-      task.getDescription().intervalSec *= adjust;
-      Calendar now = Calendar.getInstance();
-      now.add(Calendar.SECOND, (int)task.getDescription().intervalSec);
-      task.getDescription().startTime = now.getTime();
-      return true;
-
+    Map<String, String> params = task.getDescription().parameters;
+    float adjust = 1; // default
+    if (params.containsKey("profile_1_freq")
+        && getDataUsageProfile() == DataUsageProfile.PROFILE1) {
+      adjust = Float.parseFloat(params.get("profile_1_freq"));
+      Logger.i("Task " + task.getDescription().key
+        + " adjusted using profile 1");
+    } else if (params.containsKey("profile_2_freq")
+        && getDataUsageProfile() == DataUsageProfile.PROFILE2) {
+      adjust = Float.parseFloat(params.get("profile_2_freq"));
+      Logger.i("Task " + task.getDescription().key
+        + " adjusted using profile 2");
+    } else if (params.containsKey("profile_3_freq")
+        && getDataUsageProfile() == DataUsageProfile.PROFILE3) {
+      adjust = Float.parseFloat(params.get("profile_3_freq"));
+      Logger.i("Task " + task.getDescription().key
+        + " adjusted using profile 3");
+    } else if (params.containsKey("profile_4_freq")
+        && getDataUsageProfile() == DataUsageProfile.PROFILE4) {
+      adjust = Float.parseFloat(params.get("profile_4_freq"));
+      Logger.i("Task " + task.getDescription().key
+        + " adjusted using profile 4");
+    } else if (params.containsKey("profile_unlimited")
+        && getDataUsageProfile() == DataUsageProfile.UNLIMITED) {
+      adjust = Float.parseFloat(params.get("profile_unlimited"));
+      Logger.i("Task " + task.getDescription().key
+        + " adjusted using unlimited profile");
     }
+    if (adjust <= 0) {
+      Logger.i("Task " + task.getDescription().key + "marked for removal");
+      return false;
+    }
+    task.getDescription().intervalSec *= adjust;
+    Calendar now = Calendar.getInstance();
+    now.add(Calendar.SECOND, (int)task.getDescription().intervalSec);
+    task.getDescription().startTime = now.getTime();
+    return true;
+
+  }
   
   @Override
   public void onDestroy() {
@@ -767,9 +768,10 @@ public class MeasurementScheduler extends Service {
           /*
            * Use checkinRetryIntentSender so that the periodic checkin schedule will remain intact
            */
-          checkinRetryIntentSender =
-              PendingIntent.getBroadcast(MeasurementScheduler.this, 0, new UpdateIntent("",
-                  UpdateIntent.CHECKIN_RETRY_ACTION), PendingIntent.FLAG_CANCEL_CURRENT);
+          checkinRetryIntentSender = PendingIntent.getBroadcast(
+            MeasurementScheduler.this, 0
+            , new UpdateIntent(UpdateIntent.CHECKIN_RETRY_ACTION)
+            , PendingIntent.FLAG_CANCEL_CURRENT);
           alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
               + checkinRetryIntervalSec * 1000, checkinRetryIntentSender);
           checkinRetryCnt++;
@@ -886,9 +888,9 @@ public class MeasurementScheduler extends Service {
     this.checkinIntervalSec = Math.max(Config.MIN_CHECKIN_INTERVAL_SEC, interval);
     // the new checkin schedule will start
     // in PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC seconds
-    checkinIntentSender =
-        PendingIntent.getBroadcast(this, 0, new UpdateIntent("", UpdateIntent.CHECKIN_ACTION),
-            PendingIntent.FLAG_CANCEL_CURRENT);
+    checkinIntentSender = PendingIntent.getBroadcast(this, 0
+      , new UpdateIntent(UpdateIntent.CHECKIN_ACTION)
+      ,PendingIntent.FLAG_CANCEL_CURRENT);
     alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
         + Config.PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC, checkinIntervalSec * 1000, checkinIntentSender);
 

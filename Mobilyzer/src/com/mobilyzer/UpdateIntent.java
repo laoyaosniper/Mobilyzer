@@ -10,18 +10,16 @@ import android.os.Process;
 public class UpdateIntent extends Intent {
   
   // Different types of payloads that this intent can carry:
-  public static final String MSG_PAYLOAD = "MSG_PAYLOAD";
   
   public static final String TASKID_PAYLOAD = "TASKID_PAYLOAD";
   public static final String CLIENTKEY_PAYLOAD = "CLIENTKEY_PAYLOAD";
   public static final String TASK_PRIORITY_PAYLOAD = "TASK_PRIORITY_PAYLOAD";
   public static final String RESULT_PAYLOAD = "RESULT_PAYLOAD";
-  
   public static final String MEASUREMENT_TASK_PAYLOAD = "MEASUREMENT_TASK_PAYLOAD";
   public static final String BATTERY_THRESHOLD_PAYLOAD = "BATTERY_THRESHOLD_PAYLOAD";
   public static final String CHECKIN_INTERVAL_PAYLOAD = "CHECKIN_INTERVAL_PAYLOAD";
   public static final String TASK_STATUS_PAYLOAD = "TASK_STATUS_PAYLOAD";
-  
+  public static final String DATA_USAGE_PAYLOAD = "DATA_USAGE_PAYLOAD";
   
   // Different types of actions that this intent can represent:
   private static final String PACKAGE_PREFIX =
@@ -48,17 +46,18 @@ public class UpdateIntent extends Intent {
       PACKAGE_PREFIX + ".CHECKIN_INTERVAL_ACTION";
   public static final String TASK_STATUS_ACTION =
       PACKAGE_PREFIX + ".TASK_STATUS_ACTION";
+  public static final String DATA_USAGE_ACTION =
+      PACKAGE_PREFIX + ".DATA_USAGE_ACTION";
 
   /**
    * Creates an intent of the specified action with an optional message
    */
-  protected UpdateIntent(String strMsg, String action)
+  protected UpdateIntent(String action)
       throws InvalidParameterException {
     super();
     if (action == null) {
       throw new InvalidParameterException("action of UpdateIntent should not be null");
     }
     this.setAction(action);
-    this.putExtra(MSG_PAYLOAD, strMsg);
   }
 }

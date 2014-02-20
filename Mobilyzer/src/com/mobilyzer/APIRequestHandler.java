@@ -14,6 +14,7 @@
  */
 package com.mobilyzer;
 
+import com.mobilyzer.MeasurementScheduler.DataUsageProfile;
 import com.mobilyzer.MeasurementScheduler.TaskStatus;
 import com.mobilyzer.util.Logger;
 
@@ -55,15 +56,18 @@ public class APIRequestHandler extends Handler {
     int batteryThreshold = 0;
     long interval = 0;
     Intent intent = new Intent();
+    DataUsageProfile profile = DataUsageProfile.NOTFOUND;
     switch (msg.what) {
       case Config.MSG_SUBMIT_TASK:
-        task = (MeasurementTask) data.getParcelable(UpdateIntent.MEASUREMENT_TASK_PAYLOAD);
+        task = (MeasurementTask)
+          data.getParcelable(UpdateIntent.MEASUREMENT_TASK_PAYLOAD);
         if ( task != null ) {
           // Hongyi: for delay measurement
           task.getDescription().parameters.put("ts_scheduler_recv",
             String.valueOf(System.currentTimeMillis()));
           
-          Logger.d("New task added from " + clientKey + ": taskId " + task.getTaskId());
+          Logger.d("New task added from " + clientKey
+            + ": taskId " + task.getTaskId());
           taskId = scheduler.submitTask(task);
         }
         break;
@@ -111,6 +115,20 @@ public class APIRequestHandler extends Handler {
         intent.putExtra(UpdateIntent.TASK_STATUS_PAYLOAD, taskStatus);
         sendAttributeToClient(intent, clientKey, taskId);
         break;
+      case Config.MSG_SET_DATA_USAGE:
+        profile = (DataUsageProfile)
+          data.getSerializable(UpdateIntent.DATA_USAGE_PAYLOAD);
+        if ( profile != DataUsageProfile.NOTFOUND ) {
+          Logger.d(clientKey + " set data usage to " + profile );
+          scheduler.setDataUsageLimit(profile);
+        }
+        break;
+      case Config.MSG_GET_DATA_USAGE:
+        profile = scheduler.getDataUsageProfile();
+        Logger.d("get data usage " + profile);
+        intent.setAction(UpdateIntent.DATA_USAGE_ACTION + "." + clientKey);
+        intent.putExtra(UpdateIntent.DATA_USAGE_PAYLOAD, profile);
+        sendAttributeToClient(intent, clientKey, taskId);
       default:
         break;
     }
