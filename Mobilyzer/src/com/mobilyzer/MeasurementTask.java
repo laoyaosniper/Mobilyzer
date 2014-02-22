@@ -11,6 +11,7 @@ import com.mobilyzer.exceptions.MeasurementError;
 import com.mobilyzer.measurements.DnsLookupTask;
 import com.mobilyzer.measurements.HttpTask;
 import com.mobilyzer.measurements.PingTask;
+import com.mobilyzer.measurements.RRCTask;
 import com.mobilyzer.measurements.TCPThroughputTask;
 import com.mobilyzer.measurements.TracerouteTask;
 import com.mobilyzer.measurements.UDPBurstTask;
@@ -51,6 +52,8 @@ public abstract class MeasurementTask
     measurementDescToType.put(TCPThroughputTask.DESCRIPTOR, TCPThroughputTask.TYPE);
     measurementTypes.put(UDPBurstTask.TYPE, UDPBurstTask.class);
     measurementDescToType.put(UDPBurstTask.DESCRIPTOR, UDPBurstTask.TYPE);
+    measurementTypes.put(RRCTask.TYPE, RRCTask.class);
+    measurementDescToType.put(RRCTask.DESCRIPTOR, RRCTask.TYPE);
   }
 
   /**
