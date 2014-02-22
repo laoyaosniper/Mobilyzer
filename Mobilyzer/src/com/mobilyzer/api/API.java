@@ -33,6 +33,7 @@ import android.os.RemoteException;
 import android.os.Bundle;
 
 import com.mobilyzer.Config;
+import com.mobilyzer.MeasurementScheduler.DataUsageProfile;
 import com.mobilyzer.MeasurementTask;
 import com.mobilyzer.UpdateIntent;
 import com.mobilyzer.exceptions.MeasurementError;
@@ -77,6 +78,10 @@ public final class API {
   public String userResultAction;
   public static final String SERVER_RESULT_ACTION =
       UpdateIntent.SERVER_RESULT_ACTION;
+  public String batteryThresholdAction;
+  public String checkinIntervalAction;
+  public String taskStatusAction;
+  public String dataUsageAction;
   
   public final static int USER_PRIORITY = MeasurementTask.USER_PRIORITY;
   public final static int INVALID_PRIORITY = MeasurementTask.INVALID_PRIORITY;
@@ -105,6 +110,13 @@ public final class API {
     this.clientKey = clientKey;
 
     this.userResultAction = UpdateIntent.USER_RESULT_ACTION + "." + clientKey;
+    
+    this.batteryThresholdAction = UpdateIntent.BATTERY_THRESHOLD_ACTION + "."
+        + clientKey;
+    this.checkinIntervalAction = UpdateIntent.CHECKIN_INTERVAL_ACTION + "."
+        + clientKey;
+    this.taskStatusAction = UpdateIntent.TASK_STATUS_ACTION + "." + clientKey;
+    this.dataUsageAction = UpdateIntent.DATA_USAGE_ACTION + "." + clientKey;
     bind();
   }
 
@@ -304,9 +316,32 @@ public final class API {
     }
     return task;
   }
+  
+  /**
+   * Helper method for sending messages to the scheduler
+   * @param msg message to be sent
+   * @throws MeasurementError
+   */
+  private void sendMessage(Message msg) throws MeasurementError {
+    Messenger messenger = getScheduler();
+    if ( messenger != null ) {
+      try {
+        messenger.send(msg);
+      } catch (RemoteException e) {
+        String err = "remote scheduler failed!";
+        Logger.e(err);
+        throw new MeasurementError(err);
+      }   
+    }
+    else {
+      String err = "Scheduler doesn't exist";
+      Logger.e(err);
+      throw new MeasurementError(err);
+    }
+  }
  
   /**
-   * Submit task to the scheduler. 
+   * Submit task to the scheduler.
    * Works in async way. The result will be returned in a intent whose action is
    * USER_RESULT_ACTION + clientKey or SERVER_RESULT_ACTION
    * @param task the task to be exectued, created by createTask(..)
@@ -315,29 +350,21 @@ public final class API {
    */
   public void submitTask ( MeasurementTask task )
       throws MeasurementError {
-    Messenger messenger = getScheduler();
-    if ( messenger != null ) {
+    if ( task != null ) {
       // Hongyi: for delay measurement
       task.getDescription().parameters.put("ts_api_send",
         String.valueOf(System.currentTimeMillis()));
-      
+
       Logger.d("Adding new task");
       Message msg = Message.obtain(null, Config.MSG_SUBMIT_TASK);
       Bundle data = new Bundle();
-      if ( task != null ) {
-        data.putParcelable("measurementTask", task);
-        msg.setData(data);  
-        try {
-          messenger.send(msg);
-        } catch (RemoteException e) {
-          String err = "remote scheduler failed!";
-          Logger.e(err);
-          throw new MeasurementError(err);
-        }
-      }
+      data.putParcelable(UpdateIntent.MEASUREMENT_TASK_PAYLOAD, task);
+      data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+      msg.setData(data);  
+      sendMessage(msg);
     }
     else {
-      String err = "scheduler doesn't exist";
+      String err = "submitTask: task is null";
       Logger.e(err);
       throw new MeasurementError(err);
     }
@@ -350,29 +377,146 @@ public final class API {
    * @throws InvalidParameterException
    */
   public void cancelTask(String taskId) throws MeasurementError{
-    Messenger messenger = getScheduler();
-    if ( messenger != null ) {
+    if ( taskId != null ) {
       Message msg = Message.obtain(null, Config.MSG_CANCEL_TASK);      
       Bundle data = new Bundle();
       Logger.d("API: CANCEL task " + taskId);
-      data.putString("taskId", taskId);
-      data.putString("clientKey", clientKey);
+      data.putString(UpdateIntent.TASKID_PAYLOAD, taskId);
+      data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
       msg.setData(data);  
-      try {
-        messenger.send(msg);
-      } catch (RemoteException e) {
-        String err = "remote scheduler failed!";
-        Logger.e(err);
-        throw new MeasurementError(err);
-      }      
+      sendMessage(msg);
     }
     else {
-      String err = "scheduler doesn't exist";
+      String err = "cancelTask: taskId is null";
       Logger.e(err);
       throw new MeasurementError(err);
     }
   }
 
+  /**
+   * Set battery threshold of the scheduler. Only a threshold larger than the
+   * current one will be accepted. 
+   * @param threshold new battery threshold, must stay between 0 and 100
+   * @throws MeasurementError
+   */
+  public void setBatteryThreshold(int threshold) throws MeasurementError {
+    if ( threshold > 100 || threshold <= 0 ) {
+      String err = "Battery threshold should stay between 0 and 100";
+      Logger.e(err);
+      throw new MeasurementError(err);
+    }
+    Message msg = Message.obtain(null, Config.MSG_SET_BATTERY_THRESHOLD);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    data.putInt(UpdateIntent.BATTERY_THRESHOLD_PAYLOAD, threshold);
+    msg.setData(data);
+    Logger.d("Attempt setting battery threashold to " + threshold);
+    sendMessage(msg);
+  }
+  
+  /**
+   * Get current battery threshold of the scheduler.
+   * Async call. Receive api.batteryThresholdAction to get the result 
+   * @throws MeasurementError
+   */
+  public void getBatteryThreshold() throws MeasurementError {
+    Message msg = Message.obtain(null, Config.MSG_GET_BATTERY_THRESHOLD);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    msg.setData(data);
+    Logger.d("Attempt getting battery threashold");
+    sendMessage(msg);
+  }
+  
+  /**
+   * Set checkin interval of the scheduler. Only an interval larger than the
+   * current one will be accepted. 
+   * @param interval new checkin interval, should be greater than min interval
+   * @throws MeasurementError
+   */
+  public void setCheckinInterval(long interval) throws MeasurementError {
+    if ( interval < Config.MIN_CHECKIN_INTERVAL_SEC ) {
+      String err = "Checkin interval should be greater than "
+          + Config.MIN_CHECKIN_INTERVAL_SEC;
+      Logger.e(err);
+      throw new MeasurementError(err);
+    }
+    Message msg = Message.obtain(null, Config.MSG_SET_CHECKIN_INTERVAL);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    data.putLong(UpdateIntent.CHECKIN_INTERVAL_PAYLOAD, interval);
+    msg.setData(data);
+    Logger.d("Attempt setting checkin interval to " + interval);
+    sendMessage(msg);
+    
+  }
+  
+  /**
+   * Get current checkin interval of the scheduler.
+   * Async call. Receive api.checkinIntervalAction to get the result 
+   * @throws MeasurementError
+   */
+  public void getCheckinInterval() throws MeasurementError {
+    Message msg = Message.obtain(null, Config.MSG_GET_CHECKIN_INTERVAL);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    msg.setData(data);
+    Logger.d("Attempt getting checkin interval");
+    sendMessage(msg);
+  }
+  
+  /**
+   * Get current status of that task.
+   * Async call. Receive api.taskStatusAction to get the result 
+   * @param taskId the id of the target task
+   * @throws MeasurementError
+   */
+  public void getTaskStatus(String taskId) throws MeasurementError {
+    Message msg = Message.obtain(null, Config.MSG_GET_TASK_STATUS);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    data.putString(UpdateIntent.TASKID_PAYLOAD, taskId);
+    msg.setData(data);
+    Logger.d("Attempt getting task status");
+    sendMessage(msg);
+  }
+
+  /**
+   * Set data usage profile of the scheduler. Only an profile more conventional
+   * than the current one will be accepted. 
+   * @param profile new data usage profile
+   * @throws MeasurementError
+   */
+  public void setDataUsage(DataUsageProfile profile) throws MeasurementError {
+    if ( profile == DataUsageProfile.NOTFOUND ) {
+      String err = "Data usage profile should be valid";
+      Logger.e(err);
+      throw new MeasurementError(err);
+    }
+    Message msg = Message.obtain(null, Config.MSG_SET_DATA_USAGE);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    data.putSerializable(UpdateIntent.DATA_USAGE_PAYLOAD, profile);
+    msg.setData(data);
+    Logger.d("Attempt setting data usage to " + profile);
+    sendMessage(msg);
+    
+  }
+  
+  /**
+   * Get current data usage of the scheduler.
+   * Async call. Receive api.dataUsageAction to get the result 
+   * @throws MeasurementError
+   */
+  public void getDataUsage() throws MeasurementError {
+    Message msg = Message.obtain(null, Config.MSG_GET_DATA_USAGE);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+    msg.setData(data);
+    Logger.d("Attempt getting data usage");
+    sendMessage(msg);
+  }
+  
   /** Gets the currently available measurement descriptions*/
   public static Set<String> getMeasurementNames() {
     return MeasurementTask.getMeasurementNames();

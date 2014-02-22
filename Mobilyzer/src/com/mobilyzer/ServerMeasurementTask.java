@@ -44,7 +44,7 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
     intent.setAction(UpdateIntent.MEASUREMENT_PROGRESS_UPDATE_ACTION);
     intent.putExtra(UpdateIntent.TASK_STATUS_PAYLOAD, Config.TASK_STARTED);
     intent.putExtra(UpdateIntent.TASKID_PAYLOAD, realTask.getTaskId());
-    intent.putExtra(UpdateIntent.TASKKEY_PAYLOAD, realTask.getKey());
+    intent.putExtra(UpdateIntent.CLIENTKEY_PAYLOAD, realTask.getKey());
     scheduler.sendBroadcast(intent);
   }
 
@@ -65,7 +65,7 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
       intent.putExtra(UpdateIntent.TASK_PRIORITY_PAYLOAD, 
         (int) realTask.getDescription().priority);
       intent.putExtra(UpdateIntent.TASKID_PAYLOAD, realTask.getTaskId());
-      intent.putExtra(UpdateIntent.TASKKEY_PAYLOAD, realTask.getKey());
+      intent.putExtra(UpdateIntent.CLIENTKEY_PAYLOAD, realTask.getKey());
 
       if (results != null){
         // Only single task can be paused
