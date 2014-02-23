@@ -37,12 +37,24 @@ public class ContextCollector {
   private int count;
   public String ipconnectivity = "NOT SUPPORTED";
   public String dnsresolvability = "NOT SUPPORTED";
+
+  private long prevSend;
+  private long prevRecv;
+  private long prevPktSend;
+  private long prevPktRecv;
+
+
   public ContextCollector() {
     phoneUtils = PhoneUtils.getPhoneUtils();
     this.isRunning = false;
     this.timer = new Timer();
     contextResultArray = new ArrayList<HashMap<String, String>>();
     count = 0;
+
+    prevSend = -1;
+    prevRecv = -1;
+    prevPktSend = -1;
+    prevPktRecv = -1;
   }
 
   /**
@@ -64,47 +76,48 @@ public class ContextCollector {
    */
   private HashMap<String, String> getCurrentContextInfo() {
     HashMap<String, String> currentContext = new HashMap<String, String>();;
-    long prevSend = 0;
-    long prevRecv = 0;
-    long sendBytes = 0;
-    long recvBytes = 0;
-    long intervalSend = 0;
-    long intervalRecv = 0;
-    long prevPktSend = 0;
-    long prevPktRecv = 0;
-    long sendPkt = 0;
-    long recvPkt = 0;
+
+
+    // PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
+    // ipconnectivity = phoneUtils.getIpConnectivity();
+    // dnsresolvability = phoneUtils.getDnResolvability();
     long intervalPktSend = 0;
     long intervalPktRecv = 0;
-    
-    PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
-    ipconnectivity = phoneUtils.getIpConnectivity();
-    dnsresolvability = phoneUtils.getDnResolvability();
-  
-    sendBytes = TrafficStats.getMobileTxBytes();
-    recvBytes = TrafficStats.getMobileRxBytes();
-    sendPkt = TrafficStats.getMobileTxPackets();
-    sendPkt = TrafficStats.getMobileRxPackets();
-    if (prevSend > 0 || prevRecv > 0) {
+    long intervalSend = 0;
+    long intervalRecv = 0;
+
+    long sendBytes = TrafficStats.getMobileTxBytes();
+    long recvBytes = TrafficStats.getMobileRxBytes();
+    long sendPkt = TrafficStats.getMobileTxPackets();
+    long recvPkt = TrafficStats.getMobileRxPackets();
+
+    if (prevSend != -1 && prevRecv != -1) {
       intervalSend = sendBytes - prevSend;
       intervalRecv = recvBytes - prevRecv;
     }
-    if (prevPktSend > 0 || prevPktRecv > 0) {
+
+    if (prevPktSend != -1 && prevPktRecv != -1) {
       intervalPktSend = sendPkt - prevPktSend;
       intervalPktRecv = recvPkt - prevPktRecv;
     }
+    // we only return the context info if (1) it's the first time it gets called (2) we have
+    // change in the amount of packet/byte sent/received.
+    if (prevSend == -1 || prevRecv == -1 || prevPktSend == -1 || prevPktRecv == -1
+        || intervalSend != 0 || intervalRecv != 0 || intervalPktSend != 0 || intervalPktRecv != 0) {
+      currentContext.put("timestamp", (System.currentTimeMillis() * 1000) + "");
+      currentContext.put("rssi", phoneUtils.getCurrentRssi() + "");
+      currentContext.put("inc_mobile_bytes_send", intervalSend + "");
+      currentContext.put("inc_mobile_bytes_recv", intervalRecv + "");
+      currentContext.put("inc_mobile_pkt_send", intervalPktSend + "");
+      currentContext.put("inc_mobile_pkt_recv", intervalPktRecv + "");
+      currentContext.put("battery_level", phoneUtils.getCurrentBatteryLevel() + "");
+    }
+
     prevSend = sendBytes;
     prevRecv = recvBytes;
     prevPktSend = sendPkt;
     prevPktRecv = recvPkt;
 
-    currentContext.put("timestamp", (System.currentTimeMillis() * 1000) + "");
-    currentContext.put("rssi", phoneUtils.getCurrentRssi() + "");
-    currentContext.put("inc_mobile_bytes_send", intervalSend + "");
-    currentContext.put("inc_mobile_bytes_recv", intervalRecv + "");
-    currentContext.put("inc_mobile_pkt_send", intervalPktSend + "");
-    currentContext.put("inc_mobile_pkt_recv", intervalPktRecv + "");
-    currentContext.put("battery_level", phoneUtils.getCurrentBatteryLevel() + "");
     return currentContext;
   }
 
@@ -137,34 +150,40 @@ public class ContextCollector {
     timerTask.cancel();
     timer.cancel();
     isRunning = false;
-    contextResultArray.add(getCurrentContextInfo());
+    HashMap<String, String> currentContext = getCurrentContextInfo();
+    if (currentContext.size() != 0) {
+      contextResultArray.add(currentContext);
+    }
     return contextResultArray;
   }
-  
+
   /**
    * Return the current Ip connectivity
    * 
    * @return A string that represents the current ip connectivity.
    */
-  public String getCurrentIPConnectivity(){
-	  return ipconnectivity;
+  public String getCurrentIPConnectivity() {
+    return ipconnectivity;
   }
-  
+
   /**
    * Return the current DNS resolvability
    * 
    * @return A string that represents the current DNS resolvability.
    */
-  public String getCurrentDNSResolvability(){
-	  return dnsresolvability;
-  } 
+  public String getCurrentDNSResolvability() {
+    return dnsresolvability;
+  }
 
   private TimerTask timerTask = new TimerTask() {
     @Override
     public void run() {
       if (ContextCollector.this.count < Config.MAX_CONTEXT_INFO_COLLECTIONS_PER_TASK) {
-        contextResultArray.add(getCurrentContextInfo());
-        ContextCollector.this.count++;
+        HashMap<String, String> currentContext = getCurrentContextInfo();
+        if (currentContext.size() != 0) {
+          contextResultArray.add(currentContext);
+          ContextCollector.this.count++;
+        }
       }
     }
   };

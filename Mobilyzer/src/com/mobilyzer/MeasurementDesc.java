@@ -4,11 +4,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
 
-import com.mobilyzer.measurements.DnsLookupTask;
-import com.mobilyzer.measurements.HttpTask;
-import com.mobilyzer.measurements.PingTask;
-import com.mobilyzer.measurements.TracerouteTask;
-
 import android.os.Parcel;
 import android.os.Parcelable;
 
