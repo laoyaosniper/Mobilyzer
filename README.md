@@ -12,29 +12,20 @@ There are two ways to integrate Mobilyzer into your Android apps. You can integr
 For both approaches, you need to add those permissions in your project's manifest
 
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
-
     <uses-permission android:name="android.permission.USE_CREDENTIALS" />
-
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
-
     <uses-permission android:name="android.permission.INTERNET" />
-
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-And add the following service inside the <application> label
+And add the following service inside the application label
 
     <service android:name="com.mobilyzer.MeasurementScheduler" >
-
         <intent-filter>
-
             <action android:name="com.mobilyzer.MeasurementScheduler"></action>
-
         </intent-filter>
-
     </service>
 
 =============================
