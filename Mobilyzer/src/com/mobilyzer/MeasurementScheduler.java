@@ -848,6 +848,9 @@ public class MeasurementScheduler extends Service {
 
     if (finishedTasks.size() > 0) {
       try {
+        for(MeasurementResult r: finishedTasks){
+          r.getMeasurementDesc().parameters=null;
+        }
         this.checkin.uploadMeasurementResult(finishedTasks);
       } catch (IOException e) {
         Logger.e("Error when uploading message");
