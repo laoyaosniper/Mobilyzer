@@ -108,16 +108,6 @@ public class Util {
    * application.
    */
   public static String prepareUserAgent() {
-//    try {
-//      // Read package name and version number from manifest
-//      PackageManager manager = context.getPackageManager();
-//      PackageInfo info = manager.getPackageInfo(context.getPackageName(), 0);
-//      return context.getString(R.string.user_agent);
-//
-//    } catch (NameNotFoundException e) {
-//      Logger.e("Couldn't find package information in PackageManager", e);
-//      return context.getString(R.string.default_user_agent);
-//    }
 	  return Config.USER_AGENT;
 	  
   }

@@ -639,6 +639,9 @@ public class MeasurementScheduler extends Service {
   
   @Override
   public IBinder onBind(Intent intent) {
+    Logger.e("Get binding intent from "
+      + intent.getStringExtra(UpdateIntent.CLIENTKEY_PAYLOAD) + " API Ver "
+      + intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD));
     return messenger.getBinder();
   }
 

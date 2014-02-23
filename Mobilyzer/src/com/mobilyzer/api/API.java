@@ -159,9 +159,12 @@ public final class API {
     
     @Override
     public void onServiceDisconnected(ComponentName arg0) {
+      // This callback is never called until the active scheduler is uninstalled
       Logger.d("API -> onServiceDisconnected called");
       mSchedulerMessenger = null;
       isBound = false;
+      // Bind to another scheduler (probably bind to the one in itself)
+      bind();
     }
   };
 
@@ -188,6 +191,8 @@ public final class API {
       Logger.e("API-> bind() called 2");
       // Bind to the scheduler service if it is not bounded
       Intent intent = new Intent("com.mobilyzer.MeasurementScheduler");
+      intent.putExtra(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+      intent.putExtra(UpdateIntent.VERSION_PAYLOAD, Config.version);
       applicationContext.bindService(intent, serviceConn, Context.BIND_AUTO_CREATE);
       isBindingToService = true;
     }

@@ -20,6 +20,7 @@ public class UpdateIntent extends Intent {
   public static final String CHECKIN_INTERVAL_PAYLOAD = "CHECKIN_INTERVAL_PAYLOAD";
   public static final String TASK_STATUS_PAYLOAD = "TASK_STATUS_PAYLOAD";
   public static final String DATA_USAGE_PAYLOAD = "DATA_USAGE_PAYLOAD";
+  public static final String VERSION_PAYLOAD="VERSION_PAYLOAD";
   
   // Different types of actions that this intent can represent:
   private static final String PACKAGE_PREFIX =

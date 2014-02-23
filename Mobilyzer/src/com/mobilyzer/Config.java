@@ -6,7 +6,7 @@ package com.mobilyzer;
  */
 
 public interface Config {
-
+  public static final String version = "2.0";
   /**
    * Strings migrated from string.xml
    */
@@ -19,8 +19,7 @@ public interface Config {
   
   public static final int DEFAULT_BATTERY_THRESH_PRECENT = 60;
 
-  public static final String USER_AGENT = "Linux; Android";
-  public static final String DEFAULT_USER_AGENT = "MobiPerf-2.0 (Linux; Android)";
+  public static final String USER_AGENT = "Mobilyzer-" + version + " (Linux; Android)";
   public static final String PING_EXECUTABLE = "ping";
   public static final String PING6_EXECUTABLE = "ping6";
   
