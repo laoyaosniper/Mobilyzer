@@ -53,7 +53,9 @@ public abstract class MeasurementTask
     measurementTypes.put(UDPBurstTask.TYPE, UDPBurstTask.class);
     measurementDescToType.put(UDPBurstTask.DESCRIPTOR, UDPBurstTask.TYPE);
     measurementTypes.put(RRCTask.TYPE, RRCTask.class);
-    measurementDescToType.put(RRCTask.DESCRIPTOR, RRCTask.TYPE);
+    // Hongyi: RRCTask is not accessible by users. So we don't put RRC descriptor
+    // and type into this map
+//    measurementDescToType.put(RRCTask.DESCRIPTOR, RRCTask.TYPE);
   }
 
   /**
