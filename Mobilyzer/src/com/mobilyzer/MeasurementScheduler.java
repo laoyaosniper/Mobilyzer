@@ -58,7 +58,7 @@ import android.os.Parcelable;
  */
 public class MeasurementScheduler extends Service {
 
-  public enum TaskStatus {// TODO changing paused to scheduled?
+  public enum TaskStatus {
     FINISHED, PAUSED, CANCELLED, SCHEDULED, RUNNING, NOTFOUND
   }
   
@@ -68,8 +68,6 @@ public class MeasurementScheduler extends Service {
 
   private ExecutorService measurementExecutor;
   private BroadcastReceiver broadcastReceiver;
-  private boolean pauseRequested = false;
-  private boolean stopRequested = false;
   public boolean isSchedulerStarted = false;
 
 
@@ -126,7 +124,6 @@ public class MeasurementScheduler extends Service {
 
     this.idToClientKey = new ConcurrentHashMap<String, String>();
 
-    // this.mClients = new HashMap<String, Messenger>();
     messenger = new Messenger(new APIRequestHandler(this));
 
     this.setCurrentTask(null);
@@ -140,14 +137,8 @@ public class MeasurementScheduler extends Service {
     this.batteryThreshold=Config.DEFAULT_BATTERY_THRESH_PRECENT;
     this.dataUsageProfile=DataUsageProfile.PROFILE3;
 
-    this.pauseRequested = false;
-    this.stopRequested = false;
     phoneUtils = PhoneUtils.getPhoneUtils();
-
-    // TODO When services bind to Scheduler, they may not call
-    // onStartCommand, so I enabled the check-in here
-    setCheckinInterval(Config.MIN_CHECKIN_INTERVAL_SEC);
-
+    
     // Register activity specific BroadcastReceiver here
     IntentFilter filter = new IntentFilter();
     filter.addAction(UpdateIntent.CHECKIN_ACTION);
@@ -214,30 +205,32 @@ public class MeasurementScheduler extends Service {
    */
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
-    Logger.e("MeasurementScheduler -> onStartCommand. Get start service intent from "
-        + intent.getStringExtra(UpdateIntent.CLIENTKEY_PAYLOAD) + " (API Ver "
-        + intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD) + ")");
-    /**
-     * Fetch the version in startService intent and stop itself
-     * if the version in the intent is higher than its own. 
-     */
-    int currentAPIVersion = Integer.parseInt(Config.version); 
-    int newAPIVersion = Integer.parseInt(intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD));
-    if ( currentAPIVersion < newAPIVersion) {
-      Logger.e("Found scheduler version " + newAPIVersion
-        + ", current version " + currentAPIVersion);
-      Logger.e("Scheduler " + android.os.Process.myPid() + " stop itself");
-      this.stopSelf();
-      return START_STICKY;
-    }
-    
+    if ( intent != null ) {
+      Logger.e("MeasurementScheduler -> onStartCommand. Get start service intent from "
+          + intent.getStringExtra(UpdateIntent.CLIENTKEY_PAYLOAD) + " (API Ver "
+          + intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD) + ")");
+      /**
+       * Fetch the version in startService intent and stop itself
+       * if the version in the intent is higher than its own. 
+       */
+      int currentAPIVersion = Integer.parseInt(Config.version); 
+      int newAPIVersion = Integer.parseInt(intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD));
+      if ( currentAPIVersion < newAPIVersion) {
+        Logger.e("Found scheduler version " + newAPIVersion
+          + ", current version " + currentAPIVersion);
+        Logger.e("Scheduler " + android.os.Process.myPid() + " stop itself");
+        this.stopScheduler();
+        return START_STICKY;
+      }
+    }  
     // Start up the thread running the service.
     // Using one single thread for all requests
     Logger.i("starting scheduler");
-
-    // this line enables check in
+    /**
+     *  Hongyi: now API will always call startService before binding. So it is
+     *  safe to set checkin interval here 
+     */
     setCheckinInterval(Config.MIN_CHECKIN_INTERVAL_SEC);
-
     return START_STICKY;
   }
 
@@ -250,7 +243,7 @@ public class MeasurementScheduler extends Service {
   public boolean onUnbind(Intent intent){
     // All clients unbind by calling unbindService(). We can safely stop scheduler
     Logger.e("All Clients unbind. Safe to stop now");
-    this.stopSelf();
+    this.stopScheduler();
     return false;
   }
   
@@ -485,7 +478,7 @@ public class MeasurementScheduler extends Service {
       return false;
     }
 
-    Logger.e("Cancel task " + taskId + " from " + clientKey);
+    Logger.i("Cancel task " + taskId + " from " + clientKey);
     if (taskId != null && idToClientKey.containsKey(taskId)) {
       if (idToClientKey.get(taskId).equals(clientKey)) {
         boolean found = false;
@@ -504,18 +497,21 @@ public class MeasurementScheduler extends Service {
             found = true;
           }
         }
-        MeasurementTask currentMeasumrentTask = getCurrentTask();
-        Logger.e("current taskId " + currentMeasumrentTask.getTaskId());
-        if (currentMeasumrentTask != null && currentMeasumrentTask.getTaskId().equals(taskId)
-            && currentMeasumrentTask.getKey().equals(clientKey)) {
-          for (MeasurementTask mt : pendingTasks.keySet()) {
-            if (currentMeasumrentTask.equals(mt)) {
-              currentMeasumrentTask = mt;
-              break;
+        MeasurementTask currentMeasurementTask = getCurrentTask();
+        if ( currentMeasurementTask != null ) {
+          Logger.i("current taskId " + currentMeasurementTask.getTaskId());
+          
+          if (currentMeasurementTask.getTaskId().equals(taskId)
+              && currentMeasurementTask.getKey().equals(clientKey)) {
+            for (MeasurementTask mt : pendingTasks.keySet()) {
+              if (currentMeasurementTask.equals(mt)) {
+                currentMeasurementTask = mt;
+                break;
+              }
             }
+            pendingTasks.remove(currentMeasurementTask);
+            return currentMeasurementTask.stop();
           }
-          pendingTasks.remove(currentMeasumrentTask);
-          return currentMeasumrentTask.stop();
         }
 
         return found;
@@ -660,34 +656,12 @@ public class MeasurementScheduler extends Service {
   }
 
   /**
-   * Prevents new tasks from being scheduled. Started task will still run to finish.
+   * Stop the scheduler
    */
-  public synchronized void pause() {
-    Logger.d("Service pause called");
-    this.pauseRequested = true;
-
-  }
-
-  /** Enables new tasks to be scheduled */
-  public synchronized void resume() {
-    Logger.d("Service resume called");
-    this.pauseRequested = false;
-  }
-
-  public synchronized boolean isPauseRequested() {
-    return this.pauseRequested;
-  }
-
-  /** Request the scheduler to stop execution. */
-  public synchronized void requestStop() {
-    this.stopRequested = true;
+  public synchronized void stopScheduler() {
     this.notifyAll();
-    this.stopForeground(true);
+//    this.stopForeground(true);
     this.stopSelf();
-  }
-
-  private synchronized boolean isStopRequested() {
-    return this.stopRequested;
   }
 
   private synchronized void cleanUp() {

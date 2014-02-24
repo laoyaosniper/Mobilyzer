@@ -93,10 +93,6 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
           phoneUtils.getCurrentBatteryLevel() > Config.MIN_BATTERY_THRESHOLD)){
         throw new MeasurementSkippedException("Not enough battery power");
       }
-      if (scheduler.isPauseRequested()) {
-        Logger.i("Skipping measurement - scheduler paused");
-        throw new MeasurementSkippedException("Scheduler paused");
-      }
       broadcastMeasurementStart();
       try {
         contextCollector.setInterval(realTask.getDescription().contextIntervalSec);
