@@ -20,7 +20,6 @@ import java.util.ConcurrentModificationException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-
 import java.util.Vector;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -210,12 +209,12 @@ public class MeasurementScheduler extends Service {
   }
 
   /**
-   * Hongyi: This callback ensures that we always use the scheduler with newest
-   *  version on the device
+   * Hongyi: This callback ensures that we always use newest version scheduler
+   *   on the device
    */
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
-    Logger.i("Get start service intent from "
+    Logger.e("MeasurementScheduler -> onStartCommand. Get start service intent from "
         + intent.getStringExtra(UpdateIntent.CLIENTKEY_PAYLOAD) + " (API Ver "
         + intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD) + ")");
     /**
@@ -225,13 +224,13 @@ public class MeasurementScheduler extends Service {
     int currentAPIVersion = Integer.parseInt(Config.version); 
     int newAPIVersion = Integer.parseInt(intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD));
     if ( currentAPIVersion < newAPIVersion) {
-      Logger.i("Found scheduler version " + newAPIVersion
+      Logger.e("Found scheduler version " + newAPIVersion
         + ", current version " + currentAPIVersion);
-      Logger.i("Scheduler " + android.os.Process.myPid() + " stop itself");
+      Logger.e("Scheduler " + android.os.Process.myPid() + " stop itself");
       this.stopSelf();
       return START_STICKY;
     }
-    Logger.d("MeasurementScheduler -> onStartCommand, isSchedulerStarted = " + isSchedulerStarted);
+    
     // Start up the thread running the service.
     // Using one single thread for all requests
     Logger.i("starting scheduler");
@@ -239,20 +238,20 @@ public class MeasurementScheduler extends Service {
     // this line enables check in
     setCheckinInterval(Config.MIN_CHECKIN_INTERVAL_SEC);
 
-    if (!isSchedulerStarted) {
-      this.resume();
-      /**
-       * There is no onStop() for services. The service is only stopped when the user exits the
-       * application. So don't worry about setting isSchedulerStarted to false.
-       */
-      isSchedulerStarted = true;
-    }
     return START_STICKY;
   }
 
   @Override
   public IBinder onBind(Intent intent) {
     return messenger.getBinder();
+  }
+  
+  @Override
+  public boolean onUnbind(Intent intent){
+    // All clients unbind by calling unbindService(). We can safely stop scheduler
+    Logger.e("All Clients unbind. Safe to stop now");
+    this.stopSelf();
+    return false;
   }
   
   @Override

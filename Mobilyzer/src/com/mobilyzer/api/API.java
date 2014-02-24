@@ -164,6 +164,7 @@ public final class API {
       mSchedulerMessenger = null;
       isBound = false;
       // Start and bind to another scheduler (probably bind to the one in itself)
+      Logger.e("API -> startAndBind again");
       startAndBindService();
     }
   };
