@@ -6,7 +6,7 @@ package com.mobilyzer;
  */
 
 public interface Config {
-  public static final String version = "2.0";
+  public static final String version = "2";
   /**
    * Strings migrated from string.xml
    */

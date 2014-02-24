@@ -209,9 +209,28 @@ public class MeasurementScheduler extends Service {
     this.registerReceiver(broadcastReceiver, filter);
   }
 
-  // TODO(Hongyi): we don't need to call startService first. Remove it?
+  /**
+   * Hongyi: This callback ensures that we always use the scheduler with newest
+   *  version on the device
+   */
   @Override
   public int onStartCommand(Intent intent, int flags, int startId) {
+    Logger.i("Get start service intent from "
+        + intent.getStringExtra(UpdateIntent.CLIENTKEY_PAYLOAD) + " (API Ver "
+        + intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD) + ")");
+    /**
+     * Fetch the version in startService intent and stop itself
+     * if the version in the intent is higher than its own. 
+     */
+    int currentAPIVersion = Integer.parseInt(Config.version); 
+    int newAPIVersion = Integer.parseInt(intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD));
+    if ( currentAPIVersion < newAPIVersion) {
+      Logger.i("Found scheduler version " + newAPIVersion
+        + ", current version " + currentAPIVersion);
+      Logger.i("Scheduler " + android.os.Process.myPid() + " stop itself");
+      this.stopSelf();
+      return START_STICKY;
+    }
     Logger.d("MeasurementScheduler -> onStartCommand, isSchedulerStarted = " + isSchedulerStarted);
     // Start up the thread running the service.
     // Using one single thread for all requests
@@ -231,6 +250,18 @@ public class MeasurementScheduler extends Service {
     return START_STICKY;
   }
 
+  @Override
+  public IBinder onBind(Intent intent) {
+    return messenger.getBinder();
+  }
+  
+  @Override
+  public void onDestroy() {
+    Logger.d("MeasurementScheduler -> onDestroy");
+    super.onDestroy();
+    cleanUp();
+  }
+  
   // return the current running task
   public synchronized MeasurementTask getCurrentTask() {
     return currentTask;
@@ -569,14 +600,6 @@ public class MeasurementScheduler extends Service {
     return true;
 
   }
-  
-  @Override
-  public void onDestroy() {
-    Logger.d("MeasurementScheduler -> onDestroy");
-    super.onDestroy();
-    cleanUp();
-  }
-
 
   public TaskStatus getTaskStatus(String taskID) {
     if (tasksStatus.get(taskID) == null) {
@@ -632,17 +655,9 @@ public class MeasurementScheduler extends Service {
       Logger.d("Broadcasting result: taskId " + taskId);
       intent.setAction(UpdateIntent.SERVER_RESULT_ACTION);
     }    
-    // Hongyi: for delay measurement
-    intent.putExtra("ts_scheduler_send", System.currentTimeMillis());
+//    // Hongyi: for delay measurement
+//    intent.putExtra("ts_scheduler_send", System.currentTimeMillis());
     this.sendBroadcast(intent);
-  }
-  
-  @Override
-  public IBinder onBind(Intent intent) {
-    Logger.e("Get binding intent from "
-      + intent.getStringExtra(UpdateIntent.CLIENTKEY_PAYLOAD) + " API Ver "
-      + intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD));
-    return messenger.getBinder();
   }
 
   /**

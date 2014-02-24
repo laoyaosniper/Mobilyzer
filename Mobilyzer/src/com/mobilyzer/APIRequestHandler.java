@@ -62,9 +62,9 @@ public class APIRequestHandler extends Handler {
         task = (MeasurementTask)
           data.getParcelable(UpdateIntent.MEASUREMENT_TASK_PAYLOAD);
         if ( task != null ) {
-          // Hongyi: for delay measurement
-          task.getDescription().parameters.put("ts_scheduler_recv",
-            String.valueOf(System.currentTimeMillis()));
+//          // Hongyi: for delay measurement
+//          task.getDescription().parameters.put("ts_scheduler_recv",
+//            String.valueOf(System.currentTimeMillis()));
           
           Logger.d("New task added from " + clientKey
             + ": taskId " + task.getTaskId());

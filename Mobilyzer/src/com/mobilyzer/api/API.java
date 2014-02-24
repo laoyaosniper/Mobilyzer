@@ -117,7 +117,7 @@ public final class API {
         + clientKey;
     this.taskStatusAction = UpdateIntent.TASK_STATUS_ACTION + "." + clientKey;
     this.dataUsageAction = UpdateIntent.DATA_USAGE_ACTION + "." + clientKey;
-    bind();
+    startAndBindService();
   }
 
   /**
@@ -134,7 +134,7 @@ public final class API {
     }
     else {
       // Safeguard to avoid using unbound API object 
-      apiObject.bind();
+      apiObject.startAndBindService();
     }
     return apiObject;
   }
@@ -163,8 +163,8 @@ public final class API {
       Logger.d("API -> onServiceDisconnected called");
       mSchedulerMessenger = null;
       isBound = false;
-      // Bind to another scheduler (probably bind to the one in itself)
-      bind();
+      // Start and bind to another scheduler (probably bind to the one in itself)
+      startAndBindService();
     }
   };
 
@@ -185,15 +185,21 @@ public final class API {
   /**
    * Bind to scheduler, automatically called when the API is initialized
    */
-  public void bind() {
-    Logger.e("API-> bind() called "+isBindingToService+" "+isBound);
+  public void startAndBindService() {
+    Logger.e("API-> startAndBindService() called "+isBindingToService+" "+isBound);
     if (!isBindingToService && !isBound) {
       Logger.e("API-> bind() called 2");
       // Bind to the scheduler service if it is not bounded
       Intent intent = new Intent("com.mobilyzer.MeasurementScheduler");
       intent.putExtra(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
       intent.putExtra(UpdateIntent.VERSION_PAYLOAD, Config.version);
-      applicationContext.bindService(intent, serviceConn, Context.BIND_AUTO_CREATE);
+      /**
+       * Start and bind to service if it is not bounded.
+       * Notice that we don't use BIND_AUTO_CREATE flag since it will prevent
+       * the scheduler to kill itself when stopSelf is called
+       */
+      applicationContext.startService(intent);
+      applicationContext.bindService(intent, serviceConn, 0);
       isBindingToService = true;
     }
   }
@@ -356,9 +362,9 @@ public final class API {
   public void submitTask ( MeasurementTask task )
       throws MeasurementError {
     if ( task != null ) {
-      // Hongyi: for delay measurement
-      task.getDescription().parameters.put("ts_api_send",
-        String.valueOf(System.currentTimeMillis()));
+//      // Hongyi: for delay measurement
+//      task.getDescription().parameters.put("ts_api_send",
+//        String.valueOf(System.currentTimeMillis()));
 
       Logger.d("Adding new task");
       Message msg = Message.obtain(null, Config.MSG_SUBMIT_TASK);
