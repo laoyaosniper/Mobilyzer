@@ -56,7 +56,7 @@ public class MeasurementResult implements Parcelable {
   private long timestamp;
   private String type;
   private TaskProgress taskProgress;
-  private MeasurementDesc measurementDesc;
+  private MeasurementDesc parameters;
   private HashMap<String, String> values;
   private ArrayList<HashMap<String, String>> contextResults;
 
@@ -81,10 +81,14 @@ public class MeasurementResult implements Parcelable {
     this.timestamp = timeStamp;
     this.taskProgress = taskProgress;
 
-    this.measurementDesc = measurementDesc;
-    this.measurementDesc.parameters = measurementDesc.parameters;
+    this.parameters = measurementDesc;
+    this.parameters.parameters = measurementDesc.parameters;
     this.values = new HashMap<String, String>();
     this.contextResults = new ArrayList<HashMap<String, String>>();
+  }
+
+  public MeasurementDesc getMeasurementDesc(){
+    return this.parameters;
   }
 
 
@@ -162,7 +166,7 @@ public class MeasurementResult implements Parcelable {
    * Returns the type of this result
    */
   public String getType() {
-    return measurementDesc.getType();
+    return parameters.getType();
   }
 
   /**
@@ -193,7 +197,7 @@ public class MeasurementResult implements Parcelable {
    * @param value value for new parameter
    */
   public void setParameter(String key, String value) {
-    this.measurementDesc.parameters.put(key, value);
+    this.parameters.parameters.put(key, value);
   }
 
   /**
@@ -201,7 +205,7 @@ public class MeasurementResult implements Parcelable {
    * @return value for that key
    */
   public String getParameter(String key) {
-    return this.measurementDesc.parameters.get(key);
+    return this.parameters.parameters.get(key);
   }
 
   /* Add the measurement results of type String into the class */
@@ -243,7 +247,7 @@ public class MeasurementResult implements Parcelable {
   }
 
   private void getPingResult(StringBuilderPrinter printer, HashMap<String, String> values) {
-    PingDesc desc = (PingDesc) measurementDesc;
+    PingDesc desc = (PingDesc) parameters;
     printer.println("[Ping]");
     printer.println("Target: " + desc.target);
     String ipAddress = removeQuotes(values.get("target_ip"));
@@ -280,7 +284,7 @@ public class MeasurementResult implements Parcelable {
   }
 
   private void getHttpResult(StringBuilderPrinter printer, HashMap<String, String> values) {
-    HttpDesc desc = (HttpDesc) measurementDesc;
+    HttpDesc desc = (HttpDesc) parameters;
     printer.println("[HTTP]");
     printer.println("URL: " + desc.url);
     printer.println("Timestamp: " + Util.getTimeStringFromMicrosecond(properties.timestamp));
@@ -302,7 +306,7 @@ public class MeasurementResult implements Parcelable {
   }
 
   private void getDnsResult(StringBuilderPrinter printer, HashMap<String, String> values) {
-    DnsLookupDesc desc = (DnsLookupDesc) measurementDesc;
+    DnsLookupDesc desc = (DnsLookupDesc) parameters;
     printer.println("[DNS Lookup]");
     printer.println("Target: " + desc.target);
     printer.println("Timestamp: " + Util.getTimeStringFromMicrosecond(properties.timestamp));
@@ -324,7 +328,7 @@ public class MeasurementResult implements Parcelable {
   }
 
   private void getTracerouteResult(StringBuilderPrinter printer, HashMap<String, String> values) {
-    TracerouteDesc desc = (TracerouteDesc) measurementDesc;
+    TracerouteDesc desc = (TracerouteDesc) parameters;
     printer.println("[Traceroute]");
     printer.println("Target: " + desc.target);
     printer.println("Timestamp: " + Util.getTimeStringFromMicrosecond(properties.timestamp));
@@ -372,7 +376,7 @@ public class MeasurementResult implements Parcelable {
   }
 
   private void getUDPBurstResult(StringBuilderPrinter printer, HashMap<String, String> values) {
-    UDPBurstDesc desc = (UDPBurstDesc) measurementDesc;
+    UDPBurstDesc desc = (UDPBurstDesc) parameters;
     if (desc.dirUp) {
       printer.println("[UDPBurstUp]");
     } else {
@@ -404,7 +408,7 @@ public class MeasurementResult implements Parcelable {
   }
 
   private void getTCPThroughputResult(StringBuilderPrinter printer, HashMap<String, String> values) {
-    TCPThroughputDesc desc = (TCPThroughputDesc) measurementDesc;
+    TCPThroughputDesc desc = (TCPThroughputDesc) parameters;
     if (desc.dir_up) {
       printer.println("[TCP Uplink]");
     } else {
@@ -471,7 +475,7 @@ public class MeasurementResult implements Parcelable {
     timestamp = in.readLong();
     type = in.readString();
     taskProgress = (TaskProgress) in.readSerializable();
-    measurementDesc = in.readParcelable(loader);
+    parameters = in.readParcelable(loader);
     values = in.readHashMap(loader);
     contextResults = in.readArrayList(loader);
 
@@ -500,7 +504,7 @@ public class MeasurementResult implements Parcelable {
     out.writeLong(timestamp);
     out.writeString(type);
     out.writeSerializable(taskProgress);
-    out.writeParcelable(measurementDesc, flag);
+    out.writeParcelable(parameters, flag);
     out.writeMap(values);
     out.writeList(contextResults);// TODO (Ashkan): check this
 

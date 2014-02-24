@@ -86,10 +86,10 @@ public class ContextCollector {
     long intervalSend = 0;
     long intervalRecv = 0;
 
-    long sendBytes = TrafficStats.getMobileTxBytes();
-    long recvBytes = TrafficStats.getMobileRxBytes();
-    long sendPkt = TrafficStats.getMobileTxPackets();
-    long recvPkt = TrafficStats.getMobileRxPackets();
+    long sendBytes = TrafficStats.getTotalTxBytes();
+    long recvBytes = TrafficStats.getTotalRxBytes();
+    long sendPkt = TrafficStats.getTotalTxPackets();
+    long recvPkt = TrafficStats.getTotalRxPackets();
 
     if (prevSend != -1 && prevRecv != -1) {
       intervalSend = sendBytes - prevSend;
@@ -106,10 +106,10 @@ public class ContextCollector {
         || intervalSend != 0 || intervalRecv != 0 || intervalPktSend != 0 || intervalPktRecv != 0) {
       currentContext.put("timestamp", (System.currentTimeMillis() * 1000) + "");
       currentContext.put("rssi", phoneUtils.getCurrentRssi() + "");
-      currentContext.put("inc_mobile_bytes_send", intervalSend + "");
-      currentContext.put("inc_mobile_bytes_recv", intervalRecv + "");
-      currentContext.put("inc_mobile_pkt_send", intervalPktSend + "");
-      currentContext.put("inc_mobile_pkt_recv", intervalPktRecv + "");
+      currentContext.put("inc_total_bytes_send", intervalSend + "");
+      currentContext.put("inc_total_bytes_recv", intervalRecv + "");
+      currentContext.put("inc_total_pkt_send", intervalPktSend + "");
+      currentContext.put("inc_total_pkt_recv", intervalPktRecv + "");
       currentContext.put("battery_level", phoneUtils.getCurrentBatteryLevel() + "");
     }
 
