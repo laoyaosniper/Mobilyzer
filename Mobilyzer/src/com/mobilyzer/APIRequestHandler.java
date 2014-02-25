@@ -66,28 +66,31 @@ public class APIRequestHandler extends Handler {
 //          task.getDescription().parameters.put("ts_scheduler_recv",
 //            String.valueOf(System.currentTimeMillis()));
           
-          Logger.d("New task added from " + clientKey
-            + ": taskId " + task.getTaskId());
-          taskId = scheduler.submitTask(task);
+          Logger.i("Request Handler: " + clientKey + " submit task " + task.getTaskId());
+          scheduler.submitTask(task);
         }
         break;
       case Config.MSG_CANCEL_TASK:
         taskId = data.getString(UpdateIntent.TASKID_PAYLOAD);
         if ( taskId != null && clientKey != null ) {
-          Logger.d("cancel taskId: " + taskId + ", clientKey: " + clientKey);
+          Logger.i("Request Handler: " + clientKey + " cancel task " + taskId);
           scheduler.cancelTask(taskId, clientKey);
         }
         break;
       case Config.MSG_SET_BATTERY_THRESHOLD:
         batteryThreshold = data.getInt(UpdateIntent.BATTERY_THRESHOLD_PAYLOAD);
         if ( batteryThreshold != 0 ) {
-          Logger.d("set battery threshold to " + batteryThreshold);
+          Logger.i("Request Handler: " + clientKey + " set battery threshold to "
+              + batteryThreshold);
           scheduler.setBatteryThresh(batteryThreshold);
+        }
+        else {
+          Logger.e("Request Handler:  didn't find battery threshold's value");
         }
         break;
       case Config.MSG_GET_BATTERY_THRESHOLD:
         batteryThreshold = scheduler.getBatteryThresh();
-        Logger.d("get battery threshold " + batteryThreshold);
+        Logger.i("get battery threshold " + batteryThreshold);
         intent.setAction(UpdateIntent.BATTERY_THRESHOLD_ACTION + "." + clientKey);
         intent.putExtra(UpdateIntent.BATTERY_THRESHOLD_PAYLOAD, batteryThreshold);
         sendAttributeToClient(intent, clientKey, null);
@@ -95,13 +98,17 @@ public class APIRequestHandler extends Handler {
       case Config.MSG_SET_CHECKIN_INTERVAL:
         interval = data.getLong(UpdateIntent.CHECKIN_INTERVAL_PAYLOAD);
         if ( interval != 0 ) {
-          Logger.d("set checkin interval to " + interval);
+          Logger.i("Request Handler: " + clientKey + " set checkin interval to "
+              + interval);
           scheduler.setCheckinInterval(interval);
+        }
+        else {
+          Logger.e("Request Handler:  didn't find checkin interval's value");
         }
         break;
       case Config.MSG_GET_CHECKIN_INTERVAL:
         interval = scheduler.getCheckinInterval();
-        Logger.d("get checkin interval " + interval);
+        Logger.i("Request Handler: get checkin interval " + interval);
         intent.setAction(UpdateIntent.CHECKIN_INTERVAL_ACTION + "." + clientKey);
         intent.putExtra(UpdateIntent.CHECKIN_INTERVAL_PAYLOAD, interval);
         sendAttributeToClient(intent, clientKey, null);
@@ -109,7 +116,8 @@ public class APIRequestHandler extends Handler {
       case Config.MSG_GET_TASK_STATUS:
         taskId = data.getString(UpdateIntent.TASKID_PAYLOAD);
         TaskStatus taskStatus = scheduler.getTaskStatus(taskId);
-        Logger.d("get task status for taskId " + taskId + " " + taskStatus);
+        Logger.i("Request Handler: get task status for taskId " + taskId
+          + " " + taskStatus);
         intent.setAction(UpdateIntent.TASK_STATUS_ACTION + "." + clientKey);
         intent.putExtra(UpdateIntent.TASKID_PAYLOAD, taskId);
         intent.putExtra(UpdateIntent.TASK_STATUS_PAYLOAD, taskStatus);
@@ -118,14 +126,18 @@ public class APIRequestHandler extends Handler {
       case Config.MSG_SET_DATA_USAGE:
         profile = (DataUsageProfile)
           data.getSerializable(UpdateIntent.DATA_USAGE_PAYLOAD);
-        if ( profile != DataUsageProfile.NOTFOUND ) {
-          Logger.d(clientKey + " set data usage to " + profile );
+        if ( profile != null ) {
+          Logger.i("Request Handler: " + clientKey + " set data usage to "
+              + profile );
           scheduler.setDataUsageLimit(profile);
+        }
+        else {
+          Logger.e("Scheduler: didn't found data usage profile's value");
         }
         break;
       case Config.MSG_GET_DATA_USAGE:
         profile = scheduler.getDataUsageProfile();
-        Logger.d("get data usage " + profile);
+        Logger.i("Request Handler: get data usage " + profile);
         intent.setAction(UpdateIntent.DATA_USAGE_ACTION + "." + clientKey);
         intent.putExtra(UpdateIntent.DATA_USAGE_PAYLOAD, profile);
         sendAttributeToClient(intent, clientKey, taskId);

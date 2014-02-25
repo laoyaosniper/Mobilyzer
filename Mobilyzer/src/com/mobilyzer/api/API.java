@@ -422,7 +422,7 @@ public final class API {
     data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
     data.putInt(UpdateIntent.BATTERY_THRESHOLD_PAYLOAD, threshold);
     msg.setData(data);
-    Logger.d("Attempt setting battery threashold to " + threshold);
+    Logger.d("Attempt setting battery threshold to " + threshold);
     sendMessage(msg);
   }
   
@@ -436,7 +436,7 @@ public final class API {
     Bundle data = new Bundle();
     data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
     msg.setData(data);
-    Logger.d("Attempt getting battery threashold");
+    Logger.d("Attempt getting battery threshold");
     sendMessage(msg);
   }
   

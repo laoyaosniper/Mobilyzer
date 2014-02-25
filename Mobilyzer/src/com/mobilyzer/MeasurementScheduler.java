@@ -108,7 +108,7 @@ public class MeasurementScheduler extends Service {
   public void onCreate() {
     Logger.d("MeasurementScheduler -> onCreate called");
     PhoneUtils.setGlobalContext(this.getApplicationContext());
-
+    
     phoneUtils = PhoneUtils.getPhoneUtils();
     phoneUtils.registerSignalStrengthListener();
 
