@@ -60,7 +60,7 @@ public interface Config {
   /** Default interval in seconds between system measurements of a given measurement type */
   public static final double DEFAULT_SYSTEM_MEASUREMENT_INTERVAL_SEC = 15 * 60;
   /** Default interval in seconds between context collection */
-  public static final int DEFAULT_CONTEXT_INTERVAL_SEC = 1;
+  public static final int DEFAULT_CONTEXT_INTERVAL_SEC = 2;
   public static final int MAX_CONTEXT_INFO_COLLECTIONS_PER_TASK = 120;
 
 
