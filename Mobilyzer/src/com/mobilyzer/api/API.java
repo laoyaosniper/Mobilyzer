@@ -500,7 +500,7 @@ public final class API {
    * @throws MeasurementError
    */
   public void setDataUsage(DataUsageProfile profile) throws MeasurementError {
-    if ( profile == DataUsageProfile.NOTFOUND ) {
+    if ( profile == DataUsageProfile.NOTASSIGNED ) {
       String err = "Data usage profile should be valid";
       Logger.e(err);
       throw new MeasurementError(err);

@@ -63,7 +63,7 @@ public class MeasurementScheduler extends Service {
   }
   
   public enum DataUsageProfile{
-    PROFILE1 , PROFILE2, PROFILE3, PROFILE4, UNLIMITED, NOTFOUND
+    PROFILE1 , PROFILE2, PROFILE3, PROFILE4, UNLIMITED, NOTASSIGNED
   }
 
   private ExecutorService measurementExecutor;
@@ -134,8 +134,8 @@ public class MeasurementScheduler extends Service {
     this.checkinRetryCnt = 0;
     this.checkinTask = new CheckinTask();
     
-    this.batteryThreshold=Config.DEFAULT_BATTERY_THRESH_PRECENT;
-    this.dataUsageProfile=DataUsageProfile.PROFILE3;
+    this.batteryThreshold=-1;
+    this.dataUsageProfile=DataUsageProfile.NOTASSIGNED;
 
     phoneUtils = PhoneUtils.getPhoneUtils();
     
@@ -520,29 +520,44 @@ public class MeasurementScheduler extends Service {
     return false;
   }
   /**
-   * 
    * @param newBatteryThresh
    * @return the final value of battery threshold
  */
   //API should ensure that the value is between 0 and 100
   public synchronized int setBatteryThresh(int newBatteryThresh){
-    if(newBatteryThresh>this.batteryThreshold){
+    if(this.batteryThreshold == -1){
+      this.batteryThreshold=newBatteryThresh;
+    }else if(newBatteryThresh > this.batteryThreshold){
       this.batteryThreshold=newBatteryThresh;
     }
     return this.batteryThreshold;
   }
   
+  /**
+   * If the users have not specified the threshold, it will return the 
+   * default value
+   * @return
+   */
   public synchronized int getBatteryThresh(){
+    if(this.batteryThreshold == -1){
+      return Config.DEFAULT_BATTERY_THRESH_PRECENT;
+    }
     return this.batteryThreshold;
   }
   
   public synchronized void setDataUsageLimit(DataUsageProfile profile){
-    if(this.dataUsageProfile.ordinal()>profile.ordinal()){
+    if(this.dataUsageProfile.equals(DataUsageProfile.NOTASSIGNED)){
+      this.dataUsageProfile=profile;
+    }
+    else if(this.dataUsageProfile.ordinal()>profile.ordinal()){
       this.dataUsageProfile=profile;
     }
   }
   
   public synchronized DataUsageProfile getDataUsageProfile(){
+    if(this.dataUsageProfile.equals(DataUsageProfile.NOTASSIGNED)){
+      return DataUsageProfile.PROFILE3;
+    }
     return this.dataUsageProfile;
   }
   

@@ -56,7 +56,7 @@ public class APIRequestHandler extends Handler {
     int batteryThreshold = 0;
     long interval = 0;
     Intent intent = new Intent();
-    DataUsageProfile profile = DataUsageProfile.NOTFOUND;
+    DataUsageProfile profile = DataUsageProfile.NOTASSIGNED;
     switch (msg.what) {
       case Config.MSG_SUBMIT_TASK:
         task = (MeasurementTask)
