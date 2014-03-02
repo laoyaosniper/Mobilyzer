@@ -18,6 +18,7 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
@@ -35,7 +36,6 @@ import com.mobilyzer.UpdateIntent;
 import com.mobilyzer.exceptions.MeasurementSkippedException;
 import com.mobilyzer.util.Logger;
 import com.mobilyzer.util.PhoneUtils;
-
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -88,6 +88,8 @@ public class MeasurementScheduler extends Service {
   private PendingIntent measurementIntentSender;
   private PendingIntent checkinIntentSender;
   private PendingIntent checkinRetryIntentSender;
+  
+  private volatile HashMap <String, Date> serverTasks;
 
   private AlarmManager alarmManager;
   private volatile ConcurrentHashMap<String, TaskStatus> tasksStatus;
@@ -121,6 +123,8 @@ public class MeasurementScheduler extends Service {
     this.pendingTasks = new ConcurrentHashMap<MeasurementTask, Future<MeasurementResult[]>>();
     this.tasksStatus = new ConcurrentHashMap<String, MeasurementScheduler.TaskStatus>();
     this.alarmManager = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
+    
+    this.serverTasks= new HashMap<String, Date>();
 
     this.idToClientKey = new ConcurrentHashMap<String, String>();
 
@@ -226,10 +230,9 @@ public class MeasurementScheduler extends Service {
     // Start up the thread running the service.
     // Using one single thread for all requests
     Logger.i("starting scheduler");
-    /**
-     *  Hongyi: now API will always call startService before binding. So it is
-     *  safe to set checkin interval here 
-     */
+
+    //API will always call startService before binding. So it is
+    //  safe to set checkin interval here 
     setCheckinInterval(Config.MIN_CHECKIN_INTERVAL_SEC);
     return START_STICKY;
   }
@@ -286,13 +289,13 @@ public class MeasurementScheduler extends Service {
 
   private synchronized void handleMeasurement() {
     try {
-      Logger.e("In handleMeasurement");
+      Logger.d("In handleMeasurement "+ mainQueue.size()+" "+waitingTasksQueue.size());
       MeasurementTask task = mainQueue.peek();
       //update the waiting queue. It contains all the tasks that are ready
       //to be executed. Here we extract all those ready tasks from main queue
       while (task != null && task.timeFromExecution() <= 0) {
         mainQueue.poll();
-        Logger.e(task.getDescription().key + " added to waiting list");
+        Logger.d(task.getDescription().key + " " + task.getDescription().type + " added to waiting list");
         waitingTasksQueue.add(task);
         task = mainQueue.peek();
       }
@@ -302,11 +305,20 @@ public class MeasurementScheduler extends Service {
 
         MeasurementDesc desc = ready.getDescription();
         long newStartTime = desc.startTime.getTime() + (long) desc.intervalSec * 1000;
+        
+        if (desc.count == MeasurementTask.INFINITE_COUNT
+            && desc.priority == MeasurementTask.INVALID_PRIORITY) {
+          if (serverTasks.containsKey(desc.toString())
+              && serverTasks.get(desc.toString()).after(desc.endTime)) {
+            ready.getDescription().endTime.setTime(serverTasks.get(desc.toString()).getTime());
+          }
+        }
+
 
         /**
          * Add a clone of the task if it's still valid it does not change the taskID (hashCode)
          */
-        if (newStartTime < desc.endTime.getTime()
+        if (newStartTime < ready.getDescription().endTime.getTime()
             && (desc.count == MeasurementTask.INFINITE_COUNT || desc.count > 1)) {
           MeasurementTask newTask = ready.clone();
           if (desc.count != MeasurementTask.INFINITE_COUNT) {
@@ -328,9 +340,15 @@ public class MeasurementScheduler extends Service {
           intent.putExtra(UpdateIntent.TASKID_PAYLOAD, ready.getTaskId());
           intent.putExtra(UpdateIntent.CLIENTKEY_PAYLOAD, ready.getKey());
           MeasurementScheduler.this.sendBroadcast(intent);
+          
+          if (desc.count == MeasurementTask.INFINITE_COUNT
+              && desc.priority == MeasurementTask.INVALID_PRIORITY) {
+            serverTasks.remove(desc.toString());
+          }
+          
           handleMeasurement();
         } else {
-          Logger.e(ready.getDescription().key + " is gonna run");
+          Logger.e(ready.getDescription().getType() + " is gonna run");
           Future<MeasurementResult[]> future;
           setCurrentTask(ready);
           setCurrentTaskStartTime(Calendar.getInstance().getTime());
@@ -724,11 +742,21 @@ public class MeasurementScheduler extends Service {
     List<MeasurementTask> tasksFromServer = checkin.checkin();
     // The new task schedule overrides the old one
 
+    Logger.i("Received " + tasksFromServer.size() + " task(s) from server");
+    
     for (MeasurementTask task : tasksFromServer) {
-      Logger.i("added task: " + task.toString());
       task.measurementDesc.key = Config.SERVER_TASK_CLIENT_KEY;
-      if (adjustInterval(task)) {
-        this.mainQueue.add(task);
+      if (task.getDescription().count == MeasurementTask.INFINITE_COUNT) {
+        if (!serverTasks.containsKey(task.getDescription().toString())) {
+          if (adjustInterval(task)) {
+            this.mainQueue.add(task);
+          }
+        }
+        serverTasks.put(task.getDescription().toString(), task.getDescription().endTime);
+      } else {
+        if (adjustInterval(task)) {
+          this.mainQueue.add(task);
+        }
 
       }
     }

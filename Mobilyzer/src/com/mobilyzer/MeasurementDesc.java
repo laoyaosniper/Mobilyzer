@@ -1,5 +1,6 @@
 package com.mobilyzer;
 
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
@@ -99,6 +100,17 @@ public abstract class MeasurementDesc implements Parcelable {
     }
     return false;
 
+  }
+  
+  @Override
+  public String toString() {
+    String result=type+","+key+","+intervalSec+","+count+","+priority+","+contextIntervalSec+",";
+    Object [] keys=parameters.keySet().toArray();
+    Arrays.sort(keys);
+    for(Object k : keys){
+      result+=parameters.get(k)+",";
+    }
+    return result;
   }
 
   /**
