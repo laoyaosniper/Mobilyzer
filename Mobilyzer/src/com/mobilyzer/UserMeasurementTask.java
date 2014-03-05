@@ -97,6 +97,8 @@ public class UserMeasurementTask implements Callable<MeasurementResult[]> {
           contextCollector.stopCollector();
       for (MeasurementResult r: results){
         r.addContextResults(contextResults);
+        r.getDeviceProperty().dnResolvability=contextCollector.dnsConnectivity;
+        r.getDeviceProperty().ipConnectivity=contextCollector.ipConnectivity;
       } 
     } catch (MeasurementError e) {
       Logger.e("User measurement " + realTask.getDescriptor() + " has failed");

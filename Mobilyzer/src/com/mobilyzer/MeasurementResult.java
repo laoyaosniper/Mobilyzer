@@ -96,6 +96,9 @@ public class MeasurementResult implements Parcelable {
     return this.parameters;
   }
 
+  public DeviceProperty getDeviceProperty(){
+    return this.properties;
+  }
 
 
   @SuppressWarnings("unchecked")

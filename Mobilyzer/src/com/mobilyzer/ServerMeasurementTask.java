@@ -102,7 +102,10 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
             contextCollector.stopCollector();
         for (MeasurementResult r: results){
           r.addContextResults(contextResults);
+          r.getDeviceProperty().dnResolvability=contextCollector.dnsConnectivity;
+          r.getDeviceProperty().ipConnectivity=contextCollector.ipConnectivity;
         }
+        
         broadcastMeasurementEnd(results, null);
       } catch (MeasurementError e) {
         String error = "Server measurement " + realTask.getDescriptor() 
