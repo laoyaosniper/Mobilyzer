@@ -123,7 +123,8 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
       }
     } finally {
       phoneUtils.releaseWakeLock();
-      if(scheduler.getCurrentTask().equals(realTask)){
+      MeasurementTask currentTask = scheduler.getCurrentTask();
+      if(currentTask != null && currentTask.equals(realTask)){
         scheduler.setCurrentTask(null);
       }
     }

@@ -120,8 +120,12 @@ public class Checkin {
       status.put("manufacturer", info.manufacturer);
       status.put("model", info.model);
       status.put("os", info.os);
-      status.put("properties", 
-          MeasurementJsonConvertor.encodeToJson(phoneUtils.getDeviceProperty()));
+      /**
+       * TODO(Hongyi): checkin task don't belongs to any app. So we just fill
+       * request_app field with server task key   
+       */
+      status.put("properties", MeasurementJsonConvertor.encodeToJson(
+        phoneUtils.getDeviceProperty(Config.SERVER_TASK_CLIENT_KEY)));
       
       Logger.d(status.toString());
       

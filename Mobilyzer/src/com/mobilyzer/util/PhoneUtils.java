@@ -14,8 +14,6 @@
  */
 package com.mobilyzer.util;
 
-
-
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -52,12 +50,14 @@ import java.net.UnknownHostException;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
 import com.mobilyzer.Config;
 import com.mobilyzer.DeviceInfo;
 import com.mobilyzer.DeviceProperty;
+import com.mobilyzer.R;
 
 
 /**
@@ -75,6 +75,8 @@ public class PhoneUtils {
   public static final String IP_TYPE_IPV6_ONLY = "IPv6 only";
   public static final String IP_TYPE_IPV4_IPV6_BOTH = "IPv4 and IPv6";
   
+  public static volatile HashSet<String> clientKeySet
+    = new HashSet<String>();
   /**
    * The app that uses this class. The app must remain alive for longer than
    * PhoneUtils objects are in use.
@@ -530,8 +532,9 @@ public class PhoneUtils {
   
   public String getAppVersionName() {
     try {
-      String packageName = context.getPackageName();
-      return context.getPackageManager().getPackageInfo(packageName, 0).versionName;
+      String versionName = context.getString(R.string.scheduler_version_name);
+      Logger.i("Scheduler: version name = " + versionName);
+      return versionName;
     } catch (Exception e) {
       Logger.e("version name of the application cannot be found", e);
     }
@@ -792,7 +795,7 @@ public class PhoneUtils {
   }
   
   /** Returns the DeviceProperty needed to report the measurement result */
-  public DeviceProperty getDeviceProperty() {
+  public DeviceProperty getDeviceProperty(String requestApp) {
     String carrierName = telephonyManager.getNetworkOperatorName();
     Location location;
     if (isTestingServer(getServerUrl())) {
@@ -817,11 +820,17 @@ public class PhoneUtils {
     String versionName = PhoneUtils.getPhoneUtils().getAppVersionName();
     PhoneUtils utils = PhoneUtils.getPhoneUtils();
 
+    Logger.e("Request App is " + requestApp);
+    Logger.e("Host apps:");
+    for ( String app : PhoneUtils.clientKeySet ) {
+      Logger.e(app);
+    }
     return new DeviceProperty(getDeviceInfo().deviceId, versionName,
         System.currentTimeMillis() * 1000, getVersionStr(), ipConnectivity,
         dnResolvability, location.getLongitude(), location.getLatitude(), 
         location.getProvider(), networkType, carrierName, 
         utils.getCurrentBatteryLevel(), utils.isCharging(), 
         utils.getCellInfo(false), utils.getCurrentRssi());
+//        ,PhoneUtils.clientKeySet, requestApp);
   }  
 }

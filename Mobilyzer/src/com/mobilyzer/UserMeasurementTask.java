@@ -108,7 +108,8 @@ public class UserMeasurementTask implements Callable<MeasurementResult[]> {
       results = MeasurementResult.getFailureResult(realTask, e);
     } finally {
       broadcastMeasurementEnd(results);
-      if(scheduler.getCurrentTask().equals(realTask)){
+      MeasurementTask currentTask = scheduler.getCurrentTask();
+      if(currentTask != null && currentTask.equals(realTask)){
         scheduler.setCurrentTask(null);
       }
       phoneUtils.releaseWakeLock();

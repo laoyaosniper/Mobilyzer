@@ -169,7 +169,7 @@ public class UDPBurstTask extends MeasurementTask {
 
       String dir = null;
       if ((dir = params.get("direction")) != null && dir.length() > 0) {
-        if (dir.compareTo("Up") == 0) {
+        if (dir.compareToIgnoreCase("Up") == 0) {
           this.dirUp = true;
         }
       }
@@ -758,9 +758,10 @@ public class UDPBurstTask extends MeasurementTask {
     }
 
     MeasurementResult result =
-        new MeasurementResult(phoneUtils.getDeviceInfo().deviceId, phoneUtils.getDeviceProperty(),
-            UDPBurstTask.TYPE, System.currentTimeMillis() * 1000, this.taskProgress,
-            this.measurementDesc);
+        new MeasurementResult(phoneUtils.getDeviceInfo().deviceId,
+          phoneUtils.getDeviceProperty(this.getKey()),
+          UDPBurstTask.TYPE, System.currentTimeMillis() * 1000,
+          this.taskProgress, this.measurementDesc);
 
 
     result.addResult("target_ip", targetIp);

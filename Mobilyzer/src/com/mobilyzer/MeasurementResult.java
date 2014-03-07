@@ -54,6 +54,7 @@ public class MeasurementResult implements Parcelable {
   private DeviceProperty properties;// TODO needed for sending back the
   // results to server
   private long timestamp;
+  private boolean success;
   private String type;
   private TaskProgress taskProgress;
   private MeasurementDesc parameters;
@@ -81,6 +82,12 @@ public class MeasurementResult implements Parcelable {
     this.timestamp = timeStamp;
     this.taskProgress = taskProgress;
 
+    if (this.taskProgress == TaskProgress.COMPLETED) {
+      this.success = true;
+    } else {
+      this.success = false;
+    }
+    
     this.parameters = measurementDesc;
     this.parameters.parameters = measurementDesc.parameters;
     this.values = new HashMap<String, String>();
@@ -133,7 +140,8 @@ public class MeasurementResult implements Parcelable {
     } else {
       MeasurementResult r =
           new MeasurementResult(phoneUtils.getDeviceInfo().deviceId,
-            phoneUtils.getDeviceProperty(), task.getType(), System.currentTimeMillis() * 1000,
+            phoneUtils.getDeviceProperty(task.getKey()), task.getType(),
+            System.currentTimeMillis() * 1000,
             TaskProgress.FAILED, task.measurementDesc);
       Logger.e(error.toString() + "\n" + getStackTrace(error));
       r.addResult("error", error.toString());
@@ -475,6 +483,11 @@ public class MeasurementResult implements Parcelable {
     timestamp = in.readLong();
     type = in.readString();
     taskProgress = (TaskProgress) in.readSerializable();
+    if (this.taskProgress == TaskProgress.COMPLETED) {
+      this.success = true;
+    } else {
+      this.success = false;
+    }
     parameters = in.readParcelable(loader);
     values = in.readHashMap(loader);
     contextResults = in.readArrayList(loader);

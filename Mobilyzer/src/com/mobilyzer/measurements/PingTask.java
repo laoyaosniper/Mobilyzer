@@ -277,7 +277,8 @@ public class PingTask extends MeasurementTask{
     PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
 
     MeasurementResult result = new MeasurementResult(phoneUtils.getDeviceInfo().deviceId,
-      phoneUtils.getDeviceProperty(), PingTask.TYPE, System.currentTimeMillis() * 1000,
+      phoneUtils.getDeviceProperty(this.getKey()),
+      PingTask.TYPE, System.currentTimeMillis() * 1000,
       TaskProgress.COMPLETED, this.measurementDesc);
 
     result.addResult("target_ip", targetIp);

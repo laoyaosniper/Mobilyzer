@@ -17,6 +17,7 @@ package com.mobilyzer;
 import com.mobilyzer.MeasurementScheduler.DataUsageProfile;
 import com.mobilyzer.MeasurementScheduler.TaskStatus;
 import com.mobilyzer.util.Logger;
+import com.mobilyzer.util.PhoneUtils;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -58,6 +59,18 @@ public class APIRequestHandler extends Handler {
     Intent intent = new Intent();
     DataUsageProfile profile = DataUsageProfile.NOTASSIGNED;
     switch (msg.what) {
+      case Config.MSG_REGISTER_CLIENTKEY:
+        Logger.i("App " + clientKey + " registered");
+        synchronized(PhoneUtils.clientKeySet) {
+          PhoneUtils.clientKeySet.add(clientKey);
+        }
+        break;
+      case Config.MSG_UNREGISTER_CLIENTKEY:
+        Logger.i("App " + clientKey + " unregistered");
+        synchronized(PhoneUtils.clientKeySet) {
+          PhoneUtils.clientKeySet.remove(clientKey);
+        }
+        break;
       case Config.MSG_SUBMIT_TASK:
         task = (MeasurementTask)
           data.getParcelable(UpdateIntent.MEASUREMENT_TASK_PAYLOAD);

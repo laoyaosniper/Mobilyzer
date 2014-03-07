@@ -6,6 +6,7 @@ package com.mobilyzer;
  */
 
 public interface Config {
+  // Important: keep same with the version_code and version_name in strings.xml
   public static final String version = "2";
   /**
    * Strings migrated from string.xml
@@ -46,6 +47,8 @@ public interface Config {
   public static final int MSG_GET_TASK_STATUS = 8;
   public static final int MSG_SET_DATA_USAGE = 9;
   public static final int MSG_GET_DATA_USAGE = 10;
+  public static final int MSG_REGISTER_CLIENTKEY = 11;
+  public static final int MSG_UNREGISTER_CLIENTKEY = 12;
   
 
   /** The default battery level if we cannot read it from the system */

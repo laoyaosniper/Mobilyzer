@@ -443,7 +443,7 @@ public class TCPThroughputTask extends MeasurementTask {
 
     MeasurementResult result = new MeasurementResult(
       phoneUtils.getDeviceInfo().deviceId,
-      phoneUtils.getDeviceProperty(), TCPThroughputTask.TYPE,
+      phoneUtils.getDeviceProperty(this.getKey()), TCPThroughputTask.TYPE,
       System.currentTimeMillis() * 1000, taskProgress,
       this.measurementDesc);
     // TODO (Haokun): add more results if necessary

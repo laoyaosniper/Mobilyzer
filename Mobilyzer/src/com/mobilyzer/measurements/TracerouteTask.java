@@ -374,7 +374,7 @@ public class TracerouteTask extends MeasurementTask
             taskProgress=TaskProgress.COMPLETED;
             PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
             result = new MeasurementResult(phoneUtils.getDeviceInfo().deviceId, 
-                phoneUtils.getDeviceProperty(), TracerouteTask.TYPE, 
+                phoneUtils.getDeviceProperty(this.getKey()), TracerouteTask.TYPE, 
                 System.currentTimeMillis() * 1000, taskProgress,
                 this.measurementDesc);
             result.addResult("num_hops", ttl);
@@ -417,7 +417,7 @@ public class TracerouteTask extends MeasurementTask
       pauseFlag=false;
       PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
       result = new MeasurementResult(phoneUtils.getDeviceInfo().deviceId, 
-          phoneUtils.getDeviceProperty(), TracerouteTask.TYPE, 
+          phoneUtils.getDeviceProperty(this.getKey()), TracerouteTask.TYPE, 
           System.currentTimeMillis() * 1000, taskProgress, this.measurementDesc);
       Logger.i(MeasurementJsonConvertor.toJsonString(result));
       MeasurementResult[] mrArray= new MeasurementResult[1];

@@ -912,6 +912,7 @@ public class MeasurementScheduler extends Service {
    */
   public void handleCheckin() {
     if (PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() < getBatteryThresh()) {
+      Logger.e("Checkin skipped - below battery threshold " + getBatteryThresh());
       return;
     }
     /*

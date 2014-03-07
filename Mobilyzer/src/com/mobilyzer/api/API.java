@@ -17,7 +17,9 @@ package com.mobilyzer.api;
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 import android.content.ComponentName;
@@ -98,7 +100,7 @@ public final class API {
    * Singleton api object for the entire application
    */
   private static API apiObject;
-  
+  private Queue<Message> pendingMsg;
   /**
    * Make constructor private for singleton design
    * @param parent Context when the object is created
@@ -108,6 +110,7 @@ public final class API {
     Logger.d("API: constructor is called...");
     this.applicationContext = parent.getApplicationContext();
     this.clientKey = clientKey;
+    this.pendingMsg = new LinkedList<Message>();
 
     this.userResultAction = UpdateIntent.USER_RESULT_ACTION + "." + clientKey;
     
@@ -155,6 +158,26 @@ public final class API {
       mSchedulerMessenger = new Messenger(service);
       isBound = true;
       isBindingToService = false;
+      
+      Logger.i("Register client key");
+      Message msg = Message.obtain(null, Config.MSG_REGISTER_CLIENTKEY);
+      Bundle data = new Bundle();
+      data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+      msg.setData(data);
+      try {
+        sendMessage(msg);
+      } catch (MeasurementError e) {
+        Logger.e("Register clientKey failed", e);
+      }
+      
+      Logger.i("Send pending message");
+      while ( (msg = pendingMsg.poll()) != null ) {
+        try {
+          sendMessage(msg);
+        } catch (MeasurementError e) {
+          Logger.e("Send pending message failed", e);
+        }
+      }
     }
     
     @Override
@@ -168,20 +191,6 @@ public final class API {
       startAndBindService();
     }
   };
-
-  /**
-   * Get available messenger after binding to scheduler
-   * @return the messenger if bound, null otherwise
-   */
-  private Messenger getScheduler() {
-    if (isBound) {
-      Logger.e("API -> get available messenger");
-      return mSchedulerMessenger;
-    } else {
-      Logger.e("API -> have not bound to a scheduler!");
-      return null;
-    }
-  }
   
   /**
    * Bind to scheduler, automatically called when the API is initialized
@@ -212,8 +221,18 @@ public final class API {
     Logger.e("API-> unbind called");
     if (isBound) {
       Logger.e("API-> unbind called 2");
+      // Register client key
+      Message msg = Message.obtain(null, Config.MSG_UNREGISTER_CLIENTKEY);
+      Bundle data = new Bundle();
+      data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+      msg.setData(data);
+      try {
+        sendMessage(msg);
+      } catch (MeasurementError e) {
+        Logger.e("Unregister clientKey failed", e);
+      }
+      // Unbind service
       applicationContext.unbindService(serviceConn);
-
       isBound = false;
     }
   }
@@ -328,6 +347,20 @@ public final class API {
     }
     return task;
   }
+
+  /**
+   * Get available messenger after binding to scheduler
+   * @return the messenger if bound, null otherwise
+   */
+  private Messenger getScheduler() {
+    if (isBound) {
+      Logger.e("API -> get available messenger");
+      return mSchedulerMessenger;
+    } else {
+      Logger.e("API -> have not bound to a scheduler!");
+      return null;
+    }
+  }
   
   /**
    * Helper method for sending messages to the scheduler
@@ -346,9 +379,10 @@ public final class API {
       }   
     }
     else {
-      String err = "Scheduler doesn't exist";
+      String err = "API didn't bind to a scheduler. Message will be temporarily" +
+      		" queued and sent after scheduler bound";
       Logger.e(err);
-      throw new MeasurementError(err);
+      this.pendingMsg.offer(msg);
     }
   }
  

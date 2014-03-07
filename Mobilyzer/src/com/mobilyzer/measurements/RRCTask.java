@@ -813,8 +813,10 @@ public class RRCTask extends MeasurementTask {
     PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
     TaskProgress taskProgress = TaskProgress.COMPLETED;
     MeasurementResult result =
-        new MeasurementResult(phoneUtils.getDeviceInfo().deviceId, phoneUtils.getDeviceProperty(),
-            RRCTask.TYPE, System.currentTimeMillis() * 1000, taskProgress, this.measurementDesc);
+        new MeasurementResult(phoneUtils.getDeviceInfo().deviceId,
+          phoneUtils.getDeviceProperty(this.getKey()),
+          RRCTask.TYPE, System.currentTimeMillis() * 1000,
+          taskProgress, this.measurementDesc);
 
     if (desc.runUpperLayerTests) {
       result = desc.getResults(result);

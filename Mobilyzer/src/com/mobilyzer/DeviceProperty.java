@@ -16,6 +16,9 @@
 package com.mobilyzer;
 
 
+import java.util.HashSet;
+import java.util.LinkedList;
+
 import android.os.Parcel;
 import android.os.Parcelable;
 
@@ -41,12 +44,17 @@ public class DeviceProperty implements Parcelable {
   public boolean isBatteryCharging;
   public String cellInfo;
   public int rssi;
+//  // the set of apps on the device that are using Mobilyzer.
+//  public LinkedList<String> hostApps;
+//  // the app which requests this measurement
+//  public String requestApp;
 
   public DeviceProperty(String deviceId, String appVersion, long timeStamp, 
       String osVersion, String ipConnectivity, String dnResolvability, 
       double longtitude, double latitude, String locationType, 
       String networkType, String carrier, int batteryLevel, boolean isCharging,
-      String cellInfo, int rssi) {
+      String cellInfo, int rssi ) {
+//      , HashSet<String> hostApps, String requestApp) {
     super();
     this.deviceId = deviceId;
     this.appVersion = appVersion;
@@ -62,6 +70,11 @@ public class DeviceProperty implements Parcelable {
     this.isBatteryCharging = isCharging;
     this.cellInfo = cellInfo;
     this.rssi = rssi;
+//    this.hostApps = new LinkedList<String>();
+//    for ( String hostApp : hostApps ) {
+//      this.hostApps.add(hostApp);
+//    }
+//    this.requestApp = requestApp;
   }
 
   private DeviceProperty(Parcel in) {
@@ -80,6 +93,9 @@ public class DeviceProperty implements Parcelable {
     isBatteryCharging = in.readByte() != 0;
     cellInfo = in.readString();
     rssi = in.readInt();
+//    hostApps = new LinkedList<String>();
+//    in.readList(hostApps, loader);
+//    requestApp = in.readString();
   }
   
   public static final Parcelable.Creator<DeviceProperty> CREATOR
@@ -114,6 +130,8 @@ public class DeviceProperty implements Parcelable {
     dest.writeByte((byte) (isBatteryCharging ? 1 : 0));
     dest.writeString(cellInfo);
     dest.writeInt(rssi);
+//    dest.writeList(hostApps);
+//    dest.writeString(requestApp);
   }
   
 }

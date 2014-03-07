@@ -312,7 +312,8 @@ public class HttpTask extends MeasurementTask {
       PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
 
       MeasurementResult result = new MeasurementResult(
-        phoneUtils.getDeviceInfo().deviceId, phoneUtils.getDeviceProperty(),
+        phoneUtils.getDeviceInfo().deviceId,
+        phoneUtils.getDeviceProperty(this.getKey()),
         HttpTask.TYPE, System.currentTimeMillis() * 1000,
         taskProgress, this.measurementDesc);
 

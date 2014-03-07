@@ -174,7 +174,8 @@ public class DnsLookupTask extends MeasurementTask{
       Logger.i("Successfully resolved target address");
       PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
       MeasurementResult result = new MeasurementResult(
-        phoneUtils.getDeviceInfo().deviceId, phoneUtils.getDeviceProperty(),
+        phoneUtils.getDeviceInfo().deviceId,
+        phoneUtils.getDeviceProperty(this.getKey()),
         DnsLookupTask.TYPE, System.currentTimeMillis() * 1000,
         TaskProgress.COMPLETED, this.measurementDesc);
       result.addResult("address", resultInet.getHostAddress());
