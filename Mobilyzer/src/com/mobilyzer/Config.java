@@ -82,7 +82,7 @@ public interface Config {
   public static final int DEFAULT_UDPBURST_DURATION = 1000;
   public static final int DEFAULT_PARALLEL_TASK_DURATION = 5 * 1000;
   public static final int DEFAULT_TASK_DURATION_TIMEOUT = 5 * 1000;
-  public static final int DEFAULT_RRC_TASK_DURATION = 0;//TODO
+  public static final int DEFAULT_RRC_TASK_DURATION = 30 * 60 * 1000;
 
 
   // Checkin

@@ -81,13 +81,11 @@ public class MeasurementResult implements Parcelable {
     this.properties = deviceProperty;
     this.timestamp = timeStamp;
     this.taskProgress = taskProgress;
-
     if (this.taskProgress == TaskProgress.COMPLETED) {
       this.success = true;
     } else {
       this.success = false;
     }
-    
     this.parameters = measurementDesc;
     this.parameters.parameters = measurementDesc.parameters;
     this.values = new HashMap<String, String>();
@@ -98,6 +96,9 @@ public class MeasurementResult implements Parcelable {
     return this.parameters;
   }
 
+  public DeviceProperty getDeviceProperty(){
+    return this.properties;
+  }
 
 
   @SuppressWarnings("unchecked")

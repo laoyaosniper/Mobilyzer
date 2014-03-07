@@ -17,9 +17,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
-
+import android.annotation.SuppressLint;
 import android.net.TrafficStats;
-
 import com.mobilyzer.util.PhoneUtils;
 
 /**
@@ -35,8 +34,8 @@ public class ContextCollector {
   private Timer timer;
   private volatile boolean isRunning;
   private int count;
-  public String ipconnectivity = "NOT SUPPORTED";
-  public String dnsresolvability = "NOT SUPPORTED";
+  public volatile String ipConnectivity = "";
+  public volatile String dnsConnectivity = "";
 
   private long prevSend;
   private long prevRecv;
@@ -74,13 +73,11 @@ public class ContextCollector {
    * 
    * @return a hash map that contains all the context data
    */
+  @SuppressLint("NewApi")
   private HashMap<String, String> getCurrentContextInfo() {
     HashMap<String, String> currentContext = new HashMap<String, String>();;
 
 
-    // PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
-    // ipconnectivity = phoneUtils.getIpConnectivity();
-    // dnsresolvability = phoneUtils.getDnResolvability();
     long intervalPktSend = 0;
     long intervalPktRecv = 0;
     long intervalSend = 0;
@@ -154,6 +151,15 @@ public class ContextCollector {
     if (currentContext.size() != 0) {
       contextResultArray.add(currentContext);
     }
+    
+    if(ipConnectivity.equals("")){
+      ipConnectivity = phoneUtils.getIpConnectivity(); 
+    }
+    if(dnsConnectivity.equals("")){
+      dnsConnectivity = phoneUtils.getDnResolvability();
+    }
+
+    
     return contextResultArray;
   }
 
@@ -163,7 +169,7 @@ public class ContextCollector {
    * @return A string that represents the current ip connectivity.
    */
   public String getCurrentIPConnectivity() {
-    return ipconnectivity;
+    return ipConnectivity;
   }
 
   /**
@@ -171,8 +177,8 @@ public class ContextCollector {
    * 
    * @return A string that represents the current DNS resolvability.
    */
-  public String getCurrentDNSResolvability() {
-    return dnsresolvability;
+  public String getCurrentDNSConnectivity() {
+    return dnsConnectivity;
   }
 
   private TimerTask timerTask = new TimerTask() {
@@ -183,6 +189,15 @@ public class ContextCollector {
         if (currentContext.size() != 0) {
           contextResultArray.add(currentContext);
           ContextCollector.this.count++;
+
+          if(ipConnectivity.equals("")){
+            ipConnectivity = phoneUtils.getIpConnectivity(); 
+          }
+          if(dnsConnectivity.equals("")){
+            dnsConnectivity = phoneUtils.getDnResolvability();
+          }
+           
+
         }
       }
     }

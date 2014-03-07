@@ -14,6 +14,7 @@
  */
 package com.mobilyzer.util;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -53,7 +54,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-
 import com.mobilyzer.Config;
 import com.mobilyzer.DeviceInfo;
 import com.mobilyzer.DeviceProperty;
@@ -63,6 +63,7 @@ import com.mobilyzer.R;
 /**
  * Phone related utilities.
  */
+@SuppressLint("NewApi")
 public class PhoneUtils {
 
   private static final String ANDROID_STRING = "Android";
@@ -806,10 +807,6 @@ public class PhoneUtils {
     
     NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
     String networkType = PhoneUtils.getPhoneUtils().getNetwork();
-//    String ipConnectivity = getIpConnectivity();
-//    String dnResolvability = getDnResolvability();
-    // Hongyi: deal with MLab server failure
-    // Jack: If ContextCollector is supported, you can use getCurrentIpConnectivity() and getCurrentDNSResolvability() to get these info.
     String ipConnectivity = "NOT SUPPORTED";
     String dnResolvability = "NOT SUPPORTED";
     Logger.w("IP connectivity is " + ipConnectivity);
