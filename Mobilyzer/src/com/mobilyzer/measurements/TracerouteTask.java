@@ -489,6 +489,13 @@ public class TracerouteTask extends MeasurementTask
     String[] tokens = line.split(" ");
     // In most cases, the second element in the array is the IP
     String tempIp = tokens[1];
+    /**
+     * Hongyi: in Android 4.3 or above, the second token of the result is
+     * like "192.168.1.1:". So we should remove the last ":"
+     */
+    if ( tempIp.endsWith(":") ) {
+      tempIp = tempIp.substring(0, tempIp.length() - 1);
+    }
     if (isValidIpv4Addr(tempIp) || isValidIpv6Addr(tempIp)) {
       return tempIp;
     } else {

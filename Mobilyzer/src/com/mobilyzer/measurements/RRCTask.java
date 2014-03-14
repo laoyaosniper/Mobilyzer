@@ -176,7 +176,8 @@ public class RRCTask extends MeasurementTask {
       SIZES = in.readByte() != 0;
       RESULT_VISIBILITY = in.readByte() != 0;
       GIVEUP_THRESHHOLD = in.readInt();
-      times = (Integer[]) in.readArray(loader);
+      Object[] temp = in.readArray(loader);
+      times = Arrays.copyOf(temp, temp.length, Integer[].class);
     }
 
     public static final Parcelable.Creator<RRCDesc> CREATOR = new Parcelable.Creator<RRCDesc>() {
@@ -201,6 +202,7 @@ public class RRCTask extends MeasurementTask {
       dest.writeInt(MIN);
       dest.writeInt(MAX);
       dest.writeInt(port);
+      dest.writeInt(size);
       dest.writeInt(sizeGranularity);
       dest.writeByte((byte) (DNS ? 1 : 0));
       dest.writeByte((byte) (HTTP ? 1 : 0));

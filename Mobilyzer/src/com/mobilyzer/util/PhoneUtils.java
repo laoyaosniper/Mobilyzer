@@ -533,9 +533,11 @@ public class PhoneUtils {
   
   public String getAppVersionName() {
     try {
-      String versionName = context.getString(R.string.scheduler_version_name);
-      Logger.i("Scheduler: version name = " + versionName);
-      return versionName;
+      String packageName = context.getPackageName();
+      return context.getPackageManager().getPackageInfo(packageName, 0).versionName;
+//      String versionName = context.getString(R.string.scheduler_version_name);
+//      Logger.i("Scheduler: version name = " + versionName);
+//      return versionName;
     } catch (Exception e) {
       Logger.e("version name of the application cannot be found", e);
     }
