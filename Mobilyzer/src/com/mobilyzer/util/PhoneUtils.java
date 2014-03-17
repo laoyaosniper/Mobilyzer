@@ -824,12 +824,14 @@ public class PhoneUtils {
     for ( String app : PhoneUtils.clientKeySet ) {
       Logger.e(app);
     }
+    String mobilyzerVersion = context.getString(R.string.scheduler_version_name);
+    Logger.i("Scheduler version = " + mobilyzerVersion);
     return new DeviceProperty(getDeviceInfo().deviceId, versionName,
         System.currentTimeMillis() * 1000, getVersionStr(), ipConnectivity,
         dnResolvability, location.getLongitude(), location.getLatitude(), 
         location.getProvider(), networkType, carrierName, 
         utils.getCurrentBatteryLevel(), utils.isCharging(), 
-        utils.getCellInfo(false), utils.getCurrentRssi());
-//        ,PhoneUtils.clientKeySet, requestApp);
+        utils.getCellInfo(false), utils.getCurrentRssi(),
+        mobilyzerVersion, PhoneUtils.clientKeySet, requestApp);
   }  
 }

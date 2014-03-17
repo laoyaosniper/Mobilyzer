@@ -49,7 +49,11 @@ import com.mobilyzer.util.Logger;
 import com.mobilyzer.util.MeasurementJsonConvertor;
 import com.mobilyzer.util.PhoneUtils;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -125,7 +129,7 @@ public class Checkin {
        * request_app field with server task key   
        */
       status.put("properties", MeasurementJsonConvertor.encodeToJson(
-        phoneUtils.getDeviceProperty(Config.SERVER_TASK_CLIENT_KEY)));
+        phoneUtils.getDeviceProperty(Config.CHECKIN_KEY)));
       
       Logger.d(status.toString());
       
@@ -176,10 +180,55 @@ public class Checkin {
       }
     }
   }
+
+
+  /**
+   * Read in the results of tasks completed to date from a file, then clear the file.
+   * 
+   * @return The results as a JSONArray, ready for sending to the server.
+   */
+  private synchronized JSONArray readResultsFromFile() {
+
+    JSONArray results = new JSONArray();
+    try {
+      Logger.i("Loading results from disk");
+      FileInputStream inputstream = context.openFileInput("results");
+      InputStreamReader streamreader = new InputStreamReader(inputstream);
+      BufferedReader bufferedreader = new BufferedReader(streamreader);
+
+      String line;
+      int count = 0;
+      while ((line = bufferedreader.readLine()) != null) {
+        JSONObject jsonTask;
+        try {
+          jsonTask = new JSONObject(line);
+          count++;
+          results.put(jsonTask);
+        } catch (JSONException e) {
+          Logger.e("", e);
+        }
+      }
+      Logger.i("Got " + count + " results from file");
+
+      bufferedreader.close();
+      streamreader.close();
+      inputstream.close();
+
+      // delete file once done, to avoid uploading results twice
+      context.deleteFile("results");
+
+
+    } catch (FileNotFoundException e) {
+      Logger.e("", e);
+    } catch (IOException e) {
+      Logger.e("", e);
+    }
+    return results;
+  }
   
   public void uploadMeasurementResult(Vector<MeasurementResult> finishedTasks)
-      throws IOException {    
-    JSONArray resultArray = new JSONArray();
+      throws IOException {
+    JSONArray resultArray = readResultsFromFile();
     for (MeasurementResult result : finishedTasks) {
       try {
         resultArray.put(MeasurementJsonConvertor.encodeToJson(result));
@@ -187,7 +236,6 @@ public class Checkin {
         Logger.e("Error when adding " + result);
       }
     }
-    
     
     Logger.i("TaskSchedule.uploadMeasurementResult() uploading: " + 
         resultArray.toString());

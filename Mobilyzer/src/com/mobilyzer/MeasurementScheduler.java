@@ -13,6 +13,8 @@
  */
 package com.mobilyzer;
 
+import java.io.BufferedOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Calendar;
 import java.util.Comparator;
@@ -24,18 +26,18 @@ import java.util.Map;
 import java.util.Vector;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.PriorityBlockingQueue;
 
+import org.json.JSONException;
 import com.mobilyzer.Config;
 import com.mobilyzer.MeasurementTask;
 import com.mobilyzer.UpdateIntent;
-import com.mobilyzer.exceptions.MeasurementSkippedException;
 import com.mobilyzer.util.Logger;
 import com.mobilyzer.util.PhoneUtils;
+import com.mobilyzer.util.MeasurementJsonConvertor;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -171,6 +173,21 @@ public class MeasurementScheduler extends Service {
             Parcelable[] results = intent.getParcelableArrayExtra(UpdateIntent.RESULT_PAYLOAD);
             if (results != null) {
               sendResultToClient(results, priority, taskKey, taskid);
+              
+              for ( Object obj : results ) {
+                try {
+                  MeasurementResult result = (MeasurementResult) obj;
+                  /**
+                   *  Nullify the additional parameters in MeasurmentDesc, or
+                   *  the results won't be accepted by GAE server
+                   */
+                  result.getMeasurementDesc().parameters = null;
+                  String jsonResult = MeasurementJsonConvertor.encodeToJson(result).toString();
+                  saveResultToFile(jsonResult);
+                } catch (JSONException e) {
+                  Logger.e("Error converting results to json format", e);
+                }
+              }
             }
             handleMeasurement();
           } else if (intent.getStringExtra(UpdateIntent.TASK_STATUS_PAYLOAD).equals(
@@ -202,7 +219,29 @@ public class MeasurementScheduler extends Service {
     };
     this.registerReceiver(broadcastReceiver, filter);
   }
-
+  /**
+   * Save the results of a task to a file, for later uploading.
+   * This way, if the application crashes, is halted, etc. between the
+   * task and checkin, no results are lost.
+   * 
+   * @param result The JSON representation of a result, as a string
+   */
+  private synchronized void saveResultToFile(String result) {
+    try {
+      Logger.i("Saving result to file...");
+      BufferedOutputStream writer =
+          new BufferedOutputStream(openFileOutput("results",
+              Context.MODE_PRIVATE | Context.MODE_APPEND));
+      result += "\n";
+      writer.write(result.getBytes());
+      writer.close();
+    } catch (FileNotFoundException e) {
+      Logger.e("", e);
+    } catch (IOException e) {
+      Logger.e("", e);
+    }
+  }
+  
   /**
    * Hongyi: This callback ensures that we always use newest version scheduler
    *   on the device
@@ -829,40 +868,15 @@ public class MeasurementScheduler extends Service {
           future = this.pendingTasks.get(task);
           if (future != null) {
             if (future.isDone()) {
-              try {
-                this.pendingTasks.remove(task);
-                if (!future.isCancelled()) {// TODO check this
-                  results = future.get();
-                  for (MeasurementResult r : results) {
-                    finishedTasks.add(r);
-                  }
-
-                } else {
-                  Logger.e("Task execution was canceled");
-                  results =
-                      MeasurementResult.getFailureResult(task, new CancellationException(
-                          "Task cancelled"));
-                  for (MeasurementResult r : results) {
-                    finishedTasks.add(r);
-                  }
+              this.pendingTasks.remove(task);
+              if (future.isCancelled()) {
+                Logger.e("Task execution was canceled");
+                results =
+                    MeasurementResult.getFailureResult(task, new CancellationException(
+                      "Task cancelled"));
+                for (MeasurementResult r : results) {
+                  finishedTasks.add(r);
                 }
-              } catch (InterruptedException e) {
-                Logger.e("Task execution interrupted", e);
-              } catch (ExecutionException e) {
-                if (e.getCause() instanceof MeasurementSkippedException) {
-                  // Don't do anything with this -
-                  // no need to report skipped measurements
-                  Logger.i("Task skipped", e.getCause());
-                } else {
-                  // Log the error
-                  Logger.e("Task execution failed", e.getCause());
-                  results = MeasurementResult.getFailureResult(task, e.getCause());
-                  for (MeasurementResult r : results) {
-                    finishedTasks.add(r);
-                  }
-                }
-              } catch (CancellationException e) {
-                Logger.e("Task cancelled", e);
               }
             }
           }
@@ -877,20 +891,17 @@ public class MeasurementScheduler extends Service {
       }
     }
 
-    if (finishedTasks.size() > 0) {
-      try {
-        for(MeasurementResult r: finishedTasks){
-          r.getMeasurementDesc().parameters=null;
-        }
-        this.checkin.uploadMeasurementResult(finishedTasks);
-      } catch (IOException e) {
-        Logger.e("Error when uploading message");
-      }
-    }
-
-
-    Logger.i("A total of " + finishedTasks.size() + " uploaded");
+    Logger.i("A total of " + finishedTasks.size() + " from pendingTasks is uploaded");
     Logger.i("A total of " + this.pendingTasks.size() + " is in pendingTasks");
+
+    try {
+      for(MeasurementResult r: finishedTasks){
+        r.getMeasurementDesc().parameters=null;
+      }
+      this.checkin.uploadMeasurementResult(finishedTasks);
+    } catch (IOException e) {
+      Logger.e("Error when uploading message");
+    }
   }
 
   /** Returns the checkin interval of the scheduler in seconds */
