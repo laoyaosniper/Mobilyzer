@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
-import android.accounts.Account;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -64,7 +63,6 @@ import com.mobilyzer.util.Logger;
  * Use singleton design pattern to ensure there only exist one instance of API
  * User: create and add task => Scheduler: run task, send finish intent =>
  * User: register BroadcastReceiver for userResultAction and serverResultAction
- * TODO(Hongyi): is this class thread safe?
  */
 public final class API {
   public enum TaskType {
