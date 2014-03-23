@@ -21,6 +21,7 @@ public class UpdateIntent extends Intent {
   public static final String TASK_STATUS_PAYLOAD = "TASK_STATUS_PAYLOAD";
   public static final String DATA_USAGE_PAYLOAD = "DATA_USAGE_PAYLOAD";
   public static final String VERSION_PAYLOAD = "VERSION_PAYLOAD";
+  public static final String AUTH_ACCOUNT_PAYLOAD = "AUTH_ACCOUNT_PAYLOAD";
   
   // Different types of actions that this intent can represent:
   private static final String PACKAGE_PREFIX =
@@ -49,6 +50,8 @@ public class UpdateIntent extends Intent {
       PACKAGE_PREFIX + ".TASK_STATUS_ACTION";
   public static final String DATA_USAGE_ACTION =
       PACKAGE_PREFIX + ".DATA_USAGE_ACTION";
+  public static final String AUTH_ACCOUNT_ACTION =
+      PACKAGE_PREFIX + ".AUTH_ACCOUNT_ACTION";
 
   /**
    * Creates an intent of the specified action with an optional message

@@ -17,8 +17,6 @@ public interface Config {
   public static final String DEFAULT_USER = "Anonymous";
 
   public static final int MAX_TASK_QUEUE_SIZE = 100;
-  
-  public static final int DEFAULT_BATTERY_THRESH_PRECENT = 60;
 
   public static final String USER_AGENT = "Mobilyzer-" + version + " (Linux; Android)";
   public static final String PING_EXECUTABLE = "ping";
@@ -34,7 +32,6 @@ public interface Config {
   public static final String TASK_CANCELED = "TASK_CENCELED";
   public static final String TASK_STOPPED = "TASK_STOPPED";
 
-  public static final int MIN_BATTERY_THRESHOLD = 20;
 
 
   /** Types for message between API and scheduler**/
@@ -50,14 +47,13 @@ public interface Config {
   public static final int MSG_GET_DATA_USAGE = 10;
   public static final int MSG_REGISTER_CLIENTKEY = 11;
   public static final int MSG_UNREGISTER_CLIENTKEY = 12;
-  
+  public static final int MSG_SET_AUTH_ACCOUNT = 13;
+  public static final int MSG_GET_AUTH_ACCOUNT = 14;
 
   /** The default battery level if we cannot read it from the system */
   public static final int DEFAULT_BATTERY_LEVEL = 0;
   /** The default maximum battery level if we cannot read it from the system */
   public static final int DEFAULT_BATTERY_SCALE = 100;
-
-
 
   /** Tasks expire in one day. Expired tasks will be removed from the scheduler */
   public static final long TASK_EXPIRATION_MSEC = 24 * 3600 * 1000;
@@ -86,15 +82,23 @@ public interface Config {
   public static final int DEFAULT_RRC_TASK_DURATION = 30 * 60 * 1000;
 
 
-  // Checkin
+  // Keys in SharedPrefernce
   public static final String PREF_KEY_SELECTED_ACCOUNT = "PREF_KEY_SELECTED_ACCOUNT";
+  public static final String PREF_KEY_BATTERY_THRESHOLD = "PREF_KEY_BATTERY_THRESHOLD";
+  public static final String PREF_KEY_CHECKIN_INTERVAL = "PREF_KEY_CHECKIN_INTERVAL";
+  public static final String PREF_KEY_DATA_USAGE_PROFILE = "PREF_KEY_DATA_USAGE_PROFILE";
 
 
+  public static final int MIN_BATTERY_THRESHOLD = 20;
+  public static final int MAX_BATTERY_THRESHOLD = 100;
+  public static final int DEFAULT_BATTERY_THRESH_PRECENT = 60;
+  
   // The default checkin interval in seconds
   public static final long DEFAULT_CHECKIN_INTERVAL_SEC = 60 * 60L;
+  public static final long MIN_CHECKIN_INTERVAL_SEC = 3600L;
+  public static final long MAX_CHECKIN_INTERVAL_SEC = 24 * 3600L;
   public static final long MIN_CHECKIN_RETRY_INTERVAL_SEC = 20L;
   public static final long MAX_CHECKIN_RETRY_INTERVAL_SEC = 60L;
   public static final int MAX_CHECKIN_RETRY_COUNT = 3;
-  public static final long PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC = 2 * 1000L;
-  public static final long MIN_CHECKIN_INTERVAL_SEC = 3600;
+  public static final long PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC = 2 * 60 * 1000L;
 }

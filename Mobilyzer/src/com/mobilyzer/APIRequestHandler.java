@@ -31,13 +31,6 @@ import android.os.Message;
 public class APIRequestHandler extends Handler {
   MeasurementScheduler scheduler;
   
-  public void sendAttributeToClient(Intent intent, String clientKey, String taskId) {
-    if ( taskId != null ) {
-      intent.putExtra(UpdateIntent.TASKID_PAYLOAD, taskId);
-    }
-    Logger.d("Sending attribute to client " + clientKey);
-    scheduler.sendBroadcast(intent);
-  }
   /**
    * Constructor for APIRequestHandler
    * @param scheduler Parent context for this object
@@ -54,10 +47,12 @@ public class APIRequestHandler extends Handler {
 
     MeasurementTask task = null;
     String taskId = null;
-    int batteryThreshold = 0;
-    long interval = 0;
+    int batteryThreshold = -1;
+    long interval = -1;
     Intent intent = new Intent();
     DataUsageProfile profile = DataUsageProfile.NOTASSIGNED;
+    boolean isForced = (PhoneUtils.clientKeySet.size() == 1);
+    String account = null;
     switch (msg.what) {
       case Config.MSG_REGISTER_CLIENTKEY:
         Logger.i("App " + clientKey + " registered");
@@ -92,10 +87,10 @@ public class APIRequestHandler extends Handler {
         break;
       case Config.MSG_SET_BATTERY_THRESHOLD:
         batteryThreshold = data.getInt(UpdateIntent.BATTERY_THRESHOLD_PAYLOAD);
-        if ( batteryThreshold != 0 ) {
+        if ( batteryThreshold != -1 ) {
           Logger.i("Request Handler: " + clientKey + " set battery threshold to "
               + batteryThreshold);
-          scheduler.setBatteryThresh(batteryThreshold);
+          scheduler.setBatteryThresh(isForced, batteryThreshold);
         }
         else {
           Logger.e("Request Handler:  didn't find battery threshold's value");
@@ -103,17 +98,18 @@ public class APIRequestHandler extends Handler {
         break;
       case Config.MSG_GET_BATTERY_THRESHOLD:
         batteryThreshold = scheduler.getBatteryThresh();
-        Logger.i("get battery threshold " + batteryThreshold);
+        Logger.i("Request Handler: " + clientKey + " get battery threshold "
+            + batteryThreshold);
         intent.setAction(UpdateIntent.BATTERY_THRESHOLD_ACTION + "." + clientKey);
         intent.putExtra(UpdateIntent.BATTERY_THRESHOLD_PAYLOAD, batteryThreshold);
-        sendAttributeToClient(intent, clientKey, null);
+        sendToClient(intent, clientKey, null);
         break;
       case Config.MSG_SET_CHECKIN_INTERVAL:
         interval = data.getLong(UpdateIntent.CHECKIN_INTERVAL_PAYLOAD);
-        if ( interval != 0 ) {
+        if ( interval != -1 ) {
           Logger.i("Request Handler: " + clientKey + " set checkin interval to "
               + interval);
-          scheduler.setCheckinInterval(interval);
+          scheduler.setCheckinInterval(isForced, interval);
         }
         else {
           Logger.e("Request Handler:  didn't find checkin interval's value");
@@ -121,20 +117,21 @@ public class APIRequestHandler extends Handler {
         break;
       case Config.MSG_GET_CHECKIN_INTERVAL:
         interval = scheduler.getCheckinInterval();
-        Logger.i("Request Handler: get checkin interval " + interval);
+        Logger.i("Request Handler: " + clientKey + " get checkin interval "
+            + interval);
         intent.setAction(UpdateIntent.CHECKIN_INTERVAL_ACTION + "." + clientKey);
         intent.putExtra(UpdateIntent.CHECKIN_INTERVAL_PAYLOAD, interval);
-        sendAttributeToClient(intent, clientKey, null);
+        sendToClient(intent, clientKey, null);
         break;
       case Config.MSG_GET_TASK_STATUS:
         taskId = data.getString(UpdateIntent.TASKID_PAYLOAD);
         TaskStatus taskStatus = scheduler.getTaskStatus(taskId);
-        Logger.i("Request Handler: get task status for taskId " + taskId
-          + " " + taskStatus);
+        Logger.i("Request Handler: " + clientKey + " get task status for taskId "
+            + taskId + " " + taskStatus);
         intent.setAction(UpdateIntent.TASK_STATUS_ACTION + "." + clientKey);
         intent.putExtra(UpdateIntent.TASKID_PAYLOAD, taskId);
         intent.putExtra(UpdateIntent.TASK_STATUS_PAYLOAD, taskStatus);
-        sendAttributeToClient(intent, clientKey, taskId);
+        sendToClient(intent, clientKey, taskId);
         break;
       case Config.MSG_SET_DATA_USAGE:
         profile = (DataUsageProfile)
@@ -142,7 +139,7 @@ public class APIRequestHandler extends Handler {
         if ( profile != null ) {
           Logger.i("Request Handler: " + clientKey + " set data usage to "
               + profile );
-          scheduler.setDataUsageLimit(profile);
+          scheduler.setDataUsageLimit(isForced, profile);
         }
         else {
           Logger.e("Scheduler: didn't found data usage profile's value");
@@ -150,12 +147,34 @@ public class APIRequestHandler extends Handler {
         break;
       case Config.MSG_GET_DATA_USAGE:
         profile = scheduler.getDataUsageProfile();
-        Logger.i("Request Handler: get data usage " + profile);
+        Logger.i("Request Handler: " + clientKey + " get data usage " + profile);
         intent.setAction(UpdateIntent.DATA_USAGE_ACTION + "." + clientKey);
         intent.putExtra(UpdateIntent.DATA_USAGE_PAYLOAD, profile);
-        sendAttributeToClient(intent, clientKey, taskId);
+        sendToClient(intent, clientKey, taskId);
+      case Config.MSG_SET_AUTH_ACCOUNT:
+        account = data.getString(UpdateIntent.AUTH_ACCOUNT_PAYLOAD);
+        if (account != null) {
+          Logger.i("Request Handler: " + clientKey + " set authenticate account"
+              + " to " + account);
+          scheduler.setAuthenticateAccount(account);
+        }
+        break;
+      case Config.MSG_GET_AUTH_ACCOUNT:
+        account = scheduler.getAuthenticateAccount();
+        Logger.i("Request Handler: " + clientKey + " get authenticate account "
+            + account);
+        intent.setAction(UpdateIntent.AUTH_ACCOUNT_ACTION + "." + clientKey);
+        intent.putExtra(UpdateIntent.AUTH_ACCOUNT_PAYLOAD, account);
+        sendToClient(intent, clientKey, taskId);
       default:
         break;
     }
+  }
+
+  private void sendToClient(Intent intent, String clientKey, String taskId) {
+    if ( taskId != null ) {
+      intent.putExtra(UpdateIntent.TASKID_PAYLOAD, taskId);
+    }
+    scheduler.sendBroadcast(intent);
   }
 }

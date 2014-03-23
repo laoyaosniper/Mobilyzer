@@ -28,6 +28,7 @@ import com.mobilyzer.measurements.DnsLookupTask;
 import com.mobilyzer.measurements.HttpTask;
 import com.mobilyzer.measurements.ParallelTask;
 import com.mobilyzer.measurements.PingTask;
+import com.mobilyzer.measurements.RRCTask;
 import com.mobilyzer.measurements.SequentialTask;
 import com.mobilyzer.measurements.TCPThroughputTask;
 import com.mobilyzer.measurements.TracerouteTask;
@@ -241,6 +242,8 @@ public class MeasurementResult implements Parcelable {
         getUDPBurstResult(printer, values);
       } else if (type.equals(TCPThroughputTask.TYPE)) {
         getTCPThroughputResult(printer, values);
+      } else if (type.equals(RRCTask.TYPE)){
+        getRRCResult(printer, values);
       } else {
         Logger.e("Failed to get results for unknown measurement type " + type);
       }
@@ -460,6 +463,11 @@ public class MeasurementResult implements Parcelable {
     }
   }
 
+  
+  private void getRRCResult(StringBuilderPrinter printer, HashMap<String, String> values) {
+    printer.println("[RRC Inference]");
+    printer.println("Results uploaded to server");
+  }
   /**
    * Removes the quotes surrounding the string. If |str| is null, returns null.
    */

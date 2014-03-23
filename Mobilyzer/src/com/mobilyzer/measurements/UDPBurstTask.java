@@ -365,9 +365,8 @@ public class UDPBurstTask extends MeasurementTask {
 
         double jitter = 0;
         for (long offsetedDelay : offsetedDelayList) {
-          jitter +=
-              ((double) offsetedDelay - offsetedDelay_mean)
-                  * ((double) offsetedDelay - offsetedDelay_mean) / (packetCount - 1);
+          jitter += ((double) offsetedDelay - offsetedDelay_mean)
+              * ((double) offsetedDelay - offsetedDelay_mean) / (packetCount - 1);
         }
         jitter = Math.sqrt(jitter);
 
@@ -395,7 +394,6 @@ public class UDPBurstTask extends MeasurementTask {
 
     /**
      * Create an empty structure
-     * 
      * @param cliId corresponding client identifier
      */
     public UDPPacket() {}

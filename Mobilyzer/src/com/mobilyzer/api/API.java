@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import android.accounts.Account;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -84,6 +85,7 @@ public final class API {
   public String checkinIntervalAction;
   public String taskStatusAction;
   public String dataUsageAction;
+  public String authAccountAction;
   
   public final static int USER_PRIORITY = MeasurementTask.USER_PRIORITY;
   public final static int INVALID_PRIORITY = MeasurementTask.INVALID_PRIORITY;
@@ -120,6 +122,7 @@ public final class API {
         + clientKey;
     this.taskStatusAction = UpdateIntent.TASK_STATUS_ACTION + "." + clientKey;
     this.dataUsageAction = UpdateIntent.DATA_USAGE_ACTION + "." + clientKey;
+    this.authAccountAction = UpdateIntent.AUTH_ACCOUNT_ACTION + "." + clientKey;
     startAndBindService();
   }
 
@@ -370,6 +373,14 @@ public final class API {
   private void sendMessage(Message msg) throws MeasurementError {
     Messenger messenger = getScheduler();
     if ( messenger != null ) {
+      // Append client key to every msg sent from API
+      Bundle data = msg.getData();
+      if (data == null) {
+        data = new Bundle();
+        msg.setData(data);
+      }
+      data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
+      
       try {
         messenger.send(msg);
       } catch (RemoteException e) {
@@ -396,16 +407,16 @@ public final class API {
    */
   public void submitTask ( MeasurementTask task )
       throws MeasurementError {
+    Logger.d("API->submitTask called");
     if ( task != null ) {
 //      // Hongyi: for delay measurement
 //      task.getDescription().parameters.put("ts_api_send",
 //        String.valueOf(System.currentTimeMillis()));
 
-      Logger.d("Adding new task");
+      Logger.i("API: Adding new " + task.getType() + " task " + task.getTaskId());
       Message msg = Message.obtain(null, Config.MSG_SUBMIT_TASK);
       Bundle data = new Bundle();
       data.putParcelable(UpdateIntent.MEASUREMENT_TASK_PAYLOAD, task);
-      data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
       msg.setData(data);  
       sendMessage(msg);
     }
@@ -423,12 +434,12 @@ public final class API {
    * @throws InvalidParameterException
    */
   public void cancelTask(String taskId) throws MeasurementError{
+    Logger.d("API->cancelTask called");
     if ( taskId != null ) {
-      Message msg = Message.obtain(null, Config.MSG_CANCEL_TASK);      
+      Message msg = Message.obtain(null, Config.MSG_CANCEL_TASK);
       Bundle data = new Bundle();
-      Logger.d("API: CANCEL task " + taskId);
+      Logger.i("API: try to cancel task " + taskId);
       data.putString(UpdateIntent.TASKID_PAYLOAD, taskId);
-      data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
       msg.setData(data);  
       sendMessage(msg);
     }
@@ -438,7 +449,30 @@ public final class API {
       throw new MeasurementError(err);
     }
   }
-
+  
+  /**
+   * Set authenticate account for uploading results. Anonymous by default 
+   * @param account
+   * @throws MeasurementError
+   */
+  public void setAuthenticateAccount(String account) throws MeasurementError {
+    Logger.d("API->setAuthenticateAccount called");
+    Message msg = Message.obtain(null, Config.MSG_SET_AUTH_ACCOUNT);
+    Bundle data = new Bundle();
+    data.putString(UpdateIntent.AUTH_ACCOUNT_PAYLOAD, account);
+    msg.setData(data);
+    sendMessage(msg);
+  }
+  
+  /**
+   * Get current authenticate account used by scheduler
+   * @throws MeasurementError
+   */
+  public void getAuthenticateAccount() throws MeasurementError {
+    Logger.d("API->getAuthenticateAccount called");
+    Message msg = Message.obtain(null, Config.MSG_GET_AUTH_ACCOUNT);
+    sendMessage(msg);
+  }
   /**
    * Set battery threshold of the scheduler. Only a threshold larger than the
    * current one will be accepted. 
@@ -446,6 +480,7 @@ public final class API {
    * @throws MeasurementError
    */
   public void setBatteryThreshold(int threshold) throws MeasurementError {
+    Logger.d("API->setBatteryThreshold called");
     if ( threshold > 100 || threshold <= 0 ) {
       String err = "Battery threshold should stay between 0 and 100";
       Logger.e(err);
@@ -453,10 +488,8 @@ public final class API {
     }
     Message msg = Message.obtain(null, Config.MSG_SET_BATTERY_THRESHOLD);
     Bundle data = new Bundle();
-    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
     data.putInt(UpdateIntent.BATTERY_THRESHOLD_PAYLOAD, threshold);
     msg.setData(data);
-    Logger.d("Attempt setting battery threshold to " + threshold);
     sendMessage(msg);
   }
   
@@ -466,11 +499,8 @@ public final class API {
    * @throws MeasurementError
    */
   public void getBatteryThreshold() throws MeasurementError {
+    Logger.d("API->getBatteryThreshold called");
     Message msg = Message.obtain(null, Config.MSG_GET_BATTERY_THRESHOLD);
-    Bundle data = new Bundle();
-    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
-    msg.setData(data);
-    Logger.d("Attempt getting battery threshold");
     sendMessage(msg);
   }
   
@@ -481,6 +511,7 @@ public final class API {
    * @throws MeasurementError
    */
   public void setCheckinInterval(long interval) throws MeasurementError {
+    Logger.d("API->setCheckinInterval called");
     if ( interval < Config.MIN_CHECKIN_INTERVAL_SEC ) {
       String err = "Checkin interval should be greater than "
           + Config.MIN_CHECKIN_INTERVAL_SEC;
@@ -489,12 +520,9 @@ public final class API {
     }
     Message msg = Message.obtain(null, Config.MSG_SET_CHECKIN_INTERVAL);
     Bundle data = new Bundle();
-    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
     data.putLong(UpdateIntent.CHECKIN_INTERVAL_PAYLOAD, interval);
     msg.setData(data);
-    Logger.d("Attempt setting checkin interval to " + interval);
     sendMessage(msg);
-    
   }
   
   /**
@@ -503,11 +531,8 @@ public final class API {
    * @throws MeasurementError
    */
   public void getCheckinInterval() throws MeasurementError {
+    Logger.d("API->getCheckinInterval called");
     Message msg = Message.obtain(null, Config.MSG_GET_CHECKIN_INTERVAL);
-    Bundle data = new Bundle();
-    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
-    msg.setData(data);
-    Logger.d("Attempt getting checkin interval");
     sendMessage(msg);
   }
   
@@ -520,7 +545,6 @@ public final class API {
   public void getTaskStatus(String taskId) throws MeasurementError {
     Message msg = Message.obtain(null, Config.MSG_GET_TASK_STATUS);
     Bundle data = new Bundle();
-    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
     data.putString(UpdateIntent.TASKID_PAYLOAD, taskId);
     msg.setData(data);
     Logger.d("Attempt getting task status");
@@ -541,7 +565,6 @@ public final class API {
     }
     Message msg = Message.obtain(null, Config.MSG_SET_DATA_USAGE);
     Bundle data = new Bundle();
-    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
     data.putSerializable(UpdateIntent.DATA_USAGE_PAYLOAD, profile);
     msg.setData(data);
     Logger.d("Attempt setting data usage to " + profile);
@@ -556,9 +579,6 @@ public final class API {
    */
   public void getDataUsage() throws MeasurementError {
     Message msg = Message.obtain(null, Config.MSG_GET_DATA_USAGE);
-    Bundle data = new Bundle();
-    data.putString(UpdateIntent.CLIENTKEY_PAYLOAD, clientKey);
-    msg.setData(data);
     Logger.d("Attempt getting data usage");
     sendMessage(msg);
   }

@@ -35,10 +35,13 @@ import org.json.JSONException;
 import com.mobilyzer.Config;
 import com.mobilyzer.MeasurementTask;
 import com.mobilyzer.UpdateIntent;
+import com.mobilyzer.measurements.RRCTask;
 import com.mobilyzer.util.Logger;
 import com.mobilyzer.util.PhoneUtils;
 import com.mobilyzer.util.MeasurementJsonConvertor;
 
+import android.accounts.Account;
+import android.accounts.AccountManager;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -46,9 +49,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.os.Messenger;
 import android.os.Parcelable;
+import android.preference.PreferenceManager;
 /**
  * 
  * @author Ashkan Nikravesh (ashnik@umich.edu) + others
@@ -141,6 +146,7 @@ public class MeasurementScheduler extends Service {
     this.checkinTask = new CheckinTask();
     
     this.batteryThreshold=-1;
+    this.checkinIntervalSec = -1;
     this.dataUsageProfile=DataUsageProfile.NOTASSIGNED;
 
     phoneUtils = PhoneUtils.getPhoneUtils();
@@ -268,14 +274,44 @@ public class MeasurementScheduler extends Service {
     }  
     // Start up the thread running the service.
     // Using one single thread for all requests
-    Logger.i("starting scheduler");
-
-    //API will always call startService before binding. So it is
-    //  safe to set checkin interval here 
-    setCheckinInterval(Config.MIN_CHECKIN_INTERVAL_SEC);
+    if ( isSchedulerStarted == false ) {
+      Logger.i("starting scheduler, load parameters from preference");
+      isSchedulerStarted = true;
+      loadFromPreference();
+    }
+//    //API will always call startService before binding. So it is
+//    //  safe to set checkin interval here 
+//    setCheckinInterval(Config.MIN_CHECKIN_INTERVAL_SEC);
     return START_STICKY;
   }
 
+  /**
+   * Load setting parameters from shared preference
+   */
+  private void loadFromPreference() {
+    Logger.d("Scheduler loadFromPreference called");
+    SharedPreferences prefs =
+        PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+    boolean isForced = (PhoneUtils.clientKeySet.size() == 1);
+    
+    String currentBatteryThreshold = prefs.getString(Config.PREF_KEY_BATTERY_THRESHOLD
+      , String.valueOf(Config.DEFAULT_BATTERY_THRESH_PRECENT));
+    setBatteryThresh(isForced, Integer.parseInt(currentBatteryThreshold));
+
+    String currentCheckinInterval = prefs.getString(Config.PREF_KEY_CHECKIN_INTERVAL
+      , String.valueOf(Config.DEFAULT_CHECKIN_INTERVAL_SEC));
+    setCheckinInterval(false, Long.parseLong(currentCheckinInterval));
+    
+    // Fetch the data limit with 250 MB as a default
+    String currentProfile = prefs.getString(Config.PREF_KEY_DATA_USAGE_PROFILE
+      , DataUsageProfile.PROFILE3.name());
+    this.setDataUsageLimit(isForced, DataUsageProfile.valueOf(currentProfile));
+
+    Logger.i("Preference set from SharedPreference: CheckinInterval="
+        + this.checkinIntervalSec + ", Battery Threshold= "
+        + this.batteryThreshold + ", Profile=" + this.dataUsageProfile.name());
+  }
+  
   @Override
   public IBinder onBind(Intent intent) {
     return messenger.getBinder();
@@ -576,16 +612,38 @@ public class MeasurementScheduler extends Service {
     }
     return false;
   }
+  
+  private void persistParams(String key, String value) {
+    Logger.d("Scheduler persistParams called");
+    SharedPreferences prefs =
+        PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+    SharedPreferences.Editor editor = prefs.edit();
+    editor.putString(key, value);
+    editor.commit();
+  }
   /**
    * @param newBatteryThresh
    * @return the final value of battery threshold
  */
   //API should ensure that the value is between 0 and 100
-  public synchronized int setBatteryThresh(int newBatteryThresh){
-    if(this.batteryThreshold == -1){
-      this.batteryThreshold=newBatteryThresh;
-    }else if(newBatteryThresh > this.batteryThreshold){
-      this.batteryThreshold=newBatteryThresh;
+  public synchronized int setBatteryThresh(boolean isForced, int newBatteryThresh){
+    Logger.d("Scheduler->setBatteryThresh called");
+    int min = Config.MIN_BATTERY_THRESHOLD;
+    int max = Config.MAX_BATTERY_THRESHOLD;
+    /**
+     *  If there are multiple apps registered, we gonna be conservative
+     *  Only allow raising the battery threshold  
+     */
+    if (!isForced && this.batteryThreshold != -1) {
+      min = this.batteryThreshold;
+    }
+    // Check whether out of boundary and same with old value
+    if (newBatteryThresh >=min && newBatteryThresh <= max
+          && newBatteryThresh != this.batteryThreshold) {
+      this.batteryThreshold = newBatteryThresh;
+      Logger.i("Setting battery threshold to " + this.batteryThreshold + "%");
+      persistParams(Config.PREF_KEY_BATTERY_THRESHOLD
+        , String.valueOf(this.batteryThreshold));
     }
     return this.batteryThreshold;
   }
@@ -601,13 +659,59 @@ public class MeasurementScheduler extends Service {
     }
     return this.batteryThreshold;
   }
-  
-  public synchronized void setDataUsageLimit(DataUsageProfile profile){
-    if(this.dataUsageProfile.equals(DataUsageProfile.NOTASSIGNED)){
-      this.dataUsageProfile=profile;
+
+
+  /** Set the interval for checkin in seconds */
+  public synchronized long setCheckinInterval(boolean isForced, long interval) {
+    Logger.d("Scheduler->setCheckinInterval called");
+    long min = Config.MIN_CHECKIN_INTERVAL_SEC;
+    long max = Config.MAX_CHECKIN_INTERVAL_SEC;
+    /**
+     *  If there are multiple apps registered, we gonna be conservative
+     *  Only allow raising the battery threshold  
+     */
+    if (!isForced && this.checkinIntervalSec != -1) {
+      min = this.batteryThreshold;
     }
-    else if(this.dataUsageProfile.ordinal()>profile.ordinal()){
-      this.dataUsageProfile=profile;
+    // Check whether out of boundary and same with old value
+    if (interval >= min && interval <= max && interval != this.checkinIntervalSec) {
+      this.checkinIntervalSec = interval;
+      Logger.i("Setting checkin interval to " + this.checkinIntervalSec + " seconds");
+      persistParams(Config.PREF_KEY_CHECKIN_INTERVAL
+        , String.valueOf(this.checkinIntervalSec));
+      // the new checkin schedule will start
+      // in PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC seconds
+      checkinIntentSender = PendingIntent.getBroadcast(this, 0
+        , new UpdateIntent(UpdateIntent.CHECKIN_ACTION)
+        , PendingIntent.FLAG_CANCEL_CURRENT);
+      alarmManager.setRepeating(AlarmManager.RTC_WAKEUP
+        , System.currentTimeMillis() + Config.PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC
+        , checkinIntervalSec * 1000, checkinIntentSender);
+    }
+    return this.checkinIntervalSec;
+  }
+
+  /** Returns the checkin interval of the scheduler in seconds */
+  public synchronized long getCheckinInterval() {
+    if (this.checkinIntervalSec == -1) {
+      return Config.DEFAULT_CHECKIN_INTERVAL_SEC;
+    }
+    return this.checkinIntervalSec;
+  }
+  
+  public synchronized void setDataUsageLimit(boolean isForced, DataUsageProfile profile){
+    Logger.d("Scheduler->setDataUsageLimit called");
+    int min = DataUsageProfile.PROFILE1.ordinal();
+    int max = DataUsageProfile.UNLIMITED.ordinal();
+    if (!isForced && profile != null && profile != DataUsageProfile.NOTASSIGNED) {
+      max = this.dataUsageProfile.ordinal();
+    }
+    if (profile.ordinal() >= min && profile.ordinal() <= max
+        && profile != this.dataUsageProfile) {
+      this.dataUsageProfile = profile;
+      Logger.i("Setting data usage profile to " + this.dataUsageProfile);
+      persistParams(Config.PREF_KEY_DATA_USAGE_PROFILE
+        , this.dataUsageProfile.name());
     }
   }
   
@@ -618,6 +722,29 @@ public class MeasurementScheduler extends Service {
     return this.dataUsageProfile;
   }
   
+  public synchronized void setAuthenticateAccount(String selectedAccount) {
+    Logger.d("Scheduler->setAuthenticateAccount called");
+    if (selectedAccount != null) {
+      // Verify that the account is valid or is anonymous
+      String[] accounts = AccountSelector.getAccountList(getApplicationContext());
+      for (String account : accounts) {
+        if (account.equals(selectedAccount)) {
+          Logger.i("Setting authenticate account to " + account);
+          persistParams(Config.PREF_KEY_SELECTED_ACCOUNT, account);
+          return;
+        }
+      }
+      Logger.e("Error: " + selectedAccount + " doesn't match any account or anonymous");
+    }
+  }
+  
+  public synchronized String getAuthenticateAccount() {
+    Logger.d("Scheduler->getAuthenticateAccount called");
+    SharedPreferences prefs = 
+        PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+    String selectedAccount = prefs.getString(Config.PREF_KEY_SELECTED_ACCOUNT, null);
+    return selectedAccount;
+  }
   /**
   * Adjusts the frequency of the task based on the profile passed from the server.
   *
@@ -660,6 +787,9 @@ public class MeasurementScheduler extends Service {
       Logger.i("Task " + task.getDescription().key + "marked for removal");
       return false;
     }
+//    if (!task.getType().equals(RRCTask.TYPE)) {
+//      return false;
+//    }
     task.getDescription().intervalSec *= adjust;
     Calendar now = Calendar.getInstance();
     now.add(Calendar.SECOND, (int)task.getDescription().intervalSec);
@@ -813,6 +943,7 @@ public class MeasurementScheduler extends Service {
     public void run() {
       Logger.i("checking Speedometer service for new tasks");
       lastCheckinTime = Calendar.getInstance();
+      PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
       try {
         uploadResults();
         getTasksFromServer();
@@ -852,7 +983,9 @@ public class MeasurementScheduler extends Service {
               Math.min(Config.MAX_CHECKIN_RETRY_INTERVAL_SEC, checkinRetryIntervalSec * 2);
         }
       } finally {
-        PhoneUtils.getPhoneUtils().releaseWakeLock();
+        if ( phoneUtils != null ) {
+          phoneUtils.releaseWakeLock();
+        }
       }
     }
   }
@@ -904,11 +1037,6 @@ public class MeasurementScheduler extends Service {
     }
   }
 
-  /** Returns the checkin interval of the scheduler in seconds */
-  public synchronized long getCheckinInterval() {
-    return this.checkinIntervalSec;
-  }
-
 
   /** Returns the last checkin time */
   public synchronized Date getLastCheckinTime() {
@@ -930,27 +1058,12 @@ public class MeasurementScheduler extends Service {
     }
   }
 
-  /** Set the interval for checkin in seconds */
-  public synchronized long setCheckinInterval(long interval) {
-    Logger.i("Setting Checkin Interval");
-    this.checkinIntervalSec = Math.max(Config.MIN_CHECKIN_INTERVAL_SEC, interval);
-    // the new checkin schedule will start
-    // in PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC seconds
-    checkinIntentSender = PendingIntent.getBroadcast(this, 0
-      , new UpdateIntent(UpdateIntent.CHECKIN_ACTION)
-      ,PendingIntent.FLAG_CANCEL_CURRENT);
-    alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
-        + Config.PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC, checkinIntervalSec * 1000, checkinIntentSender);
-
-    Logger.i("Setting checkin interval to " + interval + " seconds");
-    return this.checkinIntervalSec;
-  }
-
   /**
    * Perform a checkin operation.
    */
   public void handleCheckin() {
-    if (PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() < getBatteryThresh()) {
+    if ( PhoneUtils.getPhoneUtils().isCharging() == false
+        && PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() < getBatteryThresh()) {
       Logger.e("Checkin skipped - below battery threshold " + getBatteryThresh());
       return;
     }

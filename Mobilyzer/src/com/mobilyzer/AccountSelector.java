@@ -47,7 +47,7 @@ import java.util.concurrent.Future;
  * Helper class for google account checkins
  */
 public class AccountSelector {
-  private static final String ACCOUNT_TYPE = "com.google";
+  public static final String ACCOUNT_TYPE = "com.google";
   private static final String ACCOUNT_NAME = "@google.com";
   // The authentication period in milliseconds
   private static final long AUTHENTICATE_PERIOD_MSEC = 24 * 3600 * 1000;
@@ -148,8 +148,10 @@ public class AccountSelector {
     Account[] accounts = accountManager.getAccountsByType(ACCOUNT_TYPE);
     Logger.i("Got " + accounts.length + " accounts");
     
-    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this.context);
+    SharedPreferences prefs = 
+        PreferenceManager.getDefaultSharedPreferences(context.getApplicationContext());
     String selectedAccount = prefs.getString(Config.PREF_KEY_SELECTED_ACCOUNT, null);
+    Logger.i("Selected account = " + selectedAccount);
    
     final String defaultUserName = Config.DEFAULT_USER;
     isAnonymous = true;
@@ -159,7 +161,7 @@ public class AccountSelector {
 
     if (accounts != null && accounts.length > 0) {
       // Default account should be the Anonymous account
-      Account accountToUse = accounts[accounts.length-1];
+      Account accountToUse = new Account(Config.DEFAULT_USER, ACCOUNT_TYPE);
       if (!accounts[accounts.length-1].name.equals(defaultUserName)) {
         for (Account account : accounts) {
           if (account.name.equals(defaultUserName)) {

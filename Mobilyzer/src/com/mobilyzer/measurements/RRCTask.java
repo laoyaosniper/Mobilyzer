@@ -1395,10 +1395,13 @@ public class RRCTask extends MeasurementTask {
    * @throws InterruptedException
    */
   public static void waitTime(int timeToSleep, boolean useMs) throws InterruptedException {
-    Logger.d("Wait for n ms: " + timeToSleep);
 
     if (!useMs) {
+      Logger.d("Wait for n s: " + timeToSleep);
       timeToSleep = timeToSleep * 1000;
+    }
+    else {
+      Logger.d("Wait for n ms: " + timeToSleep);
     }
     Thread.sleep(timeToSleep);
   }
@@ -1702,7 +1705,8 @@ public class RRCTask extends MeasurementTask {
       if (timeToWait < 500) { // 500s, or a bit over 8 minutes.
         timeToWait = timeToWait * 2;
       } else {
-        // if it's taking a while, stop pausing traffic
+        // if it's taking a while, give up this RRC test
+        throw new MeasurementError("Not on Wifi, timeout after backoff to 500s");
       }
       try {
         waitTime(timeToWait, false);
