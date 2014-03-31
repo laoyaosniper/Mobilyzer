@@ -283,6 +283,7 @@ public class PhoneUtils {
     "EVDO_B",   // 12 - NETWORK_TYPE_EVDO_B
     "LTE",      // 13 - NETWORK_TYPE_LTE
     "EHRPD",    // 14 - NETWORK_TYPE_EHRPD
+    "HSPAP",    // 15 - NETWORK_TYPE_HSPAP
   };
 
   /** Returns mobile data network connection type. */

@@ -279,9 +279,6 @@ public class MeasurementScheduler extends Service {
       isSchedulerStarted = true;
       loadFromPreference();
     }
-//    //API will always call startService before binding. So it is
-//    //  safe to set checkin interval here 
-//    setCheckinInterval(Config.MIN_CHECKIN_INTERVAL_SEC);
     return START_STICKY;
   }
 
@@ -298,6 +295,8 @@ public class MeasurementScheduler extends Service {
       , String.valueOf(Config.DEFAULT_BATTERY_THRESH_PRECENT));
     setBatteryThresh(isForced, Integer.parseInt(currentBatteryThreshold));
 
+    //API will always call startService before binding. So it is
+    //  safe to set checkin interval here 
     String currentCheckinInterval = prefs.getString(Config.PREF_KEY_CHECKIN_INTERVAL
       , String.valueOf(Config.DEFAULT_CHECKIN_INTERVAL_SEC));
     setCheckinInterval(false, Long.parseLong(currentCheckinInterval));
