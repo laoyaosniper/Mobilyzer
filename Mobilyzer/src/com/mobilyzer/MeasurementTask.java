@@ -186,9 +186,11 @@ public abstract class MeasurementTask
   @Override
   public int hashCode() {
     StringBuilder taskstrbld = new StringBuilder(getMeasurementType());
-    taskstrbld.append(",").append(this.measurementDesc.key).append(",")
-        .append(this.measurementDesc.startTime).append(",").append(this.measurementDesc.endTime)
-        .append(",").append(this.measurementDesc.intervalSec).append(",")
+    taskstrbld.append(",")
+        .append(this.measurementDesc.key).append(",")
+        .append(this.measurementDesc.startTime).append(",")
+        .append(this.measurementDesc.endTime).append(",")
+        .append(this.measurementDesc.intervalSec).append(",")
         .append(this.measurementDesc.priority);
 
     Object[] keys = this.measurementDesc.parameters.keySet().toArray();

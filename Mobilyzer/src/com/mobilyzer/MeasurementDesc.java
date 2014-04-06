@@ -94,7 +94,13 @@ public abstract class MeasurementDesc implements Parcelable {
         && this.intervalSec == another.intervalSec && this.count == another.count
         && this.priority == another.priority
         && this.contextIntervalSec == another.contextIntervalSec
-        && this.parameters.equals(another.parameters)) {
+//        && this.parameters.equals(another.parameters)
+        ) {
+      for (String key : this.parameters.keySet()) {
+        if (!this.parameters.get(key).equals(another.parameters.get(key))) {
+          return false;
+        }
+      }
 
       return true;
     }
@@ -104,6 +110,9 @@ public abstract class MeasurementDesc implements Parcelable {
   
   @Override
   public String toString() {
+    // TODO(Hongyi): use a more formal way to compare, for now use toString()
+    // we don't use starttime and endtime to compare equality since it will be
+    // rewritten when constructing the measurement task
     String result=type+","+key+","+intervalSec+","+count+","+priority+","+contextIntervalSec+",";
     Object [] keys=parameters.keySet().toArray();
     Arrays.sort(keys);

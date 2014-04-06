@@ -92,16 +92,20 @@ public class UserMeasurementTask implements Callable<MeasurementResult[]> {
       broadcastMeasurementStart();
       contextCollector.setInterval(realTask.getDescription().contextIntervalSec);
       contextCollector.startCollector();
+      
 //      // Hongyi: for delay measurement
 //      realTask.getDescription().parameters.put("ts_measurement_start",
-//        String.valueOf(System.currentTimeMillis()));
+//        String.valueOf(System.currentTimeMillis()));   
       results = realTask.call();
-//      // Hongyi: for delay measurement
-//      realTask.getDescription().parameters.put("ts_measurement_end",
-//        String.valueOf(System.currentTimeMillis()));
       ArrayList<HashMap<String, String>> contextResults =
           contextCollector.stopCollector();
+      
+//      // Hongyi: for delay measurement
+//      long ts = System.currentTimeMillis();   
       for (MeasurementResult r: results){
+//        // Hongyi: for delay measurement
+//        r.setParameter("ts_measurement_end", String.valueOf(ts));
+        
         r.addContextResults(contextResults);
         r.getDeviceProperty().dnResolvability=contextCollector.dnsConnectivity;
         r.getDeviceProperty().ipConnectivity=contextCollector.ipConnectivity;
