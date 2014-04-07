@@ -790,7 +790,7 @@ public class RRCTask extends MeasurementTask {
         stopFlag=false;
         PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
         MeasurementResult result = new MeasurementResult(phoneUtils.getDeviceInfo().deviceId, 
-            phoneUtils.getDeviceProperty(this.getKey()), TracerouteTask.TYPE, 
+            phoneUtils.getDeviceProperty(this.getKey()), RRCTask.TYPE, 
             System.currentTimeMillis() * 1000, TaskProgress.RESCHEDULED, this.measurementDesc);
         Logger.i(MeasurementJsonConvertor.toJsonString(result));
         MeasurementResult[] mrArray= new MeasurementResult[1];
@@ -875,6 +875,7 @@ public class RRCTask extends MeasurementTask {
       return desc;
     }
 
+    RRCTestData data = new RRCTestData(desc.size, desc.testId);
     try {
       /*
        * Suspend all other tasks performed by the app as they can interfere. Although we have a
@@ -882,9 +883,6 @@ public class RRCTask extends MeasurementTask {
        * have scheduled other tests to be every 5 minutes, which can cause the RRC task to never
        * successfully complete without having to abort.
        */
-
-      RRCTestData data = new RRCTestData(desc.size, desc.testId);
-
       // If the RRC task is enabled
       if (desc.RRC) {
         // Set up the connection to the echo server
@@ -943,6 +941,27 @@ public class RRCTask extends MeasurementTask {
       e.printStackTrace();
     } catch (InterruptedException e) {
       e.printStackTrace();
+    } catch (MeasurementError e) {
+      if (e.getMessage().equals("Rescheduled")) {
+        try {
+          // If the RRC task is enabled and we get partial data
+          if (desc.RRC && data.rttsSmall[0] != -1) {
+            Logger.i("RRC Reschedule: update the model on the GAE datastore");
+            uploadRrcInferenceData(data);
+            Logger.d("RRC Reschedule: Saving data complete");
+          }
+        } catch (IOException ee) {
+          ee.printStackTrace();
+          Logger.e("Data not saved: " + ee.getMessage());
+        }
+        // Check if the upper layer tasks are enabled and we get partial results
+        if (desc.runUpperLayerTests && desc.SIZES && !data.packetSizes.isEmpty()) {
+          Logger.i("RRC Reschedule: update the size on the GAE datastore");
+          uploadRrcInferenceSizeData(data);
+          Logger.d("RRC Reschedule: Saving data complete");
+        }
+      }
+      throw e;
     }
 
     return desc;
