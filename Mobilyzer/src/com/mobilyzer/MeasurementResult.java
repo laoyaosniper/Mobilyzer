@@ -196,6 +196,13 @@ public class MeasurementResult implements Parcelable {
   }
 
   /**
+   * @return key/value pairs of measurement result
+   */
+  public HashMap<String,String> getValues(){
+    return this.values;
+  }
+  
+  /**
    * Check if this task is succeed
    * @return true if taskProgress equals to COMPLETED, false otherwise
    */

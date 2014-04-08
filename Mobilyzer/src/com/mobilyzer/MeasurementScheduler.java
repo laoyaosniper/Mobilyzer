@@ -811,11 +811,17 @@ public class MeasurementScheduler extends Service {
     }
   }
   
+  /**
+   * Get current authenticate account of Mobilyzer
+   * @return account in string if already set by clients(include Anonymous), or
+   *  null if havn't been set yet(it will checkin as anonymous user) 
+   */
   public synchronized String getAuthenticateAccount() {
     Logger.d("Scheduler->getAuthenticateAccount called");
     SharedPreferences prefs = 
         PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
     String selectedAccount = prefs.getString(Config.PREF_KEY_SELECTED_ACCOUNT, null);
+    Logger.i("Get authenticate account: " + selectedAccount);
     return selectedAccount;
   }
   /**
@@ -829,9 +835,7 @@ public class MeasurementScheduler extends Service {
   private boolean adjustInterval(MeasurementTask task) {
 
 //    if (task.getType().equals("rrc")) {
-//      Calendar now = Calendar.getInstance();
-//      task.getDescription().startTime = now.getTime();
-//      return true;
+//      task.getDescription().intervalSec = 60;
 //    }
     Map<String, String> params = task.getDescription().parameters;
     float adjust = 1; // default
@@ -848,7 +852,6 @@ public class MeasurementScheduler extends Service {
     } else if (params.containsKey("profile_3_freq")
         && getDataUsageProfile() == DataUsageProfile.PROFILE3) {
       adjust = Float.parseFloat(params.get("profile_3_freq"));
-//      adjust /= 10; // 1h->10min, 6h->1h, 12h->2h
       Logger.i("Task " + task.getDescription().key
         + " adjusted using profile 3");
     } else if (params.containsKey("profile_4_freq")
