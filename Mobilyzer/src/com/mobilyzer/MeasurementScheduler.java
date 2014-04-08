@@ -101,8 +101,6 @@ public class MeasurementScheduler extends Service {
   private PendingIntent checkinIntentSender;
   private PendingIntent checkinRetryIntentSender;
   
-  //TODO(Hongyi): change serverTask to currentSchedule 
-//  private volatile HashMap <String, Date> serverTasks;
   // We keep track of the current tasks running, indexed by their unique IDs,
   // for the purpose of selectively updating our schedule when new tasks are
   // received from the server
@@ -142,7 +140,6 @@ public class MeasurementScheduler extends Service {
     this.tasksStatus = new ConcurrentHashMap<String, MeasurementScheduler.TaskStatus>();
     this.alarmManager = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
     
-//    this.serverTasks= new HashMap<String, Date>();
     this.currentSchedule = new Hashtable<String, MeasurementTask>();
 
     this.idToClientKey = new ConcurrentHashMap<String, String>();
@@ -235,10 +232,6 @@ public class MeasurementScheduler extends Service {
               for ( Object obj : results ) {
                 MeasurementResult result = (MeasurementResult) obj;
                 for (MeasurementTask task : mainQueue) {
-//                  if (task.getType().equals("rrc")) {
-//                    Logger.i("Old desc:" + task.getDescription().toString());
-//                    Logger.i("New desc:" + result.getMeasurementDesc().toString());
-//                  }
                   if (task.getDescription().toString().equals(result.getMeasurementDesc().toString())) {
                     mainQueue.remove(task);
                     // reschedule start time
@@ -417,13 +410,7 @@ public class MeasurementScheduler extends Service {
         MeasurementDesc desc = ready.getDescription();
         long newStartTime = desc.startTime.getTime() + (long) desc.intervalSec * 1000;
         
-        if (
-//            desc.count == MeasurementTask.INFINITE_COUNT &&
-            desc.priority != MeasurementTask.USER_PRIORITY) {
-//          if (serverTasks.containsKey(desc.toString())
-//              && serverTasks.get(desc.toString()).after(desc.endTime)) {
-//            ready.getDescription().endTime.setTime(serverTasks.get(desc.toString()).getTime());
-//          }
+        if (desc.priority != MeasurementTask.USER_PRIORITY) {
           if (currentSchedule.containsKey(desc.toString())
               && currentSchedule.get(desc.toString()).getDescription().endTime.after(desc.endTime)) {
             Logger.i("Change end time of server task " + desc.getType() + " to "
@@ -486,10 +473,7 @@ public class MeasurementScheduler extends Service {
           intent.putExtra(UpdateIntent.CLIENTKEY_PAYLOAD, ready.getKey());
           MeasurementScheduler.this.sendBroadcast(intent);
           
-          if (
-//              desc.count == MeasurementTask.INFINITE_COUNT && 
-              desc.priority != MeasurementTask.USER_PRIORITY) {
-//            serverTasks.remove(desc.toString());
+          if (desc.priority != MeasurementTask.USER_PRIORITY) {
             Logger.i("Task " + desc + "expired, remove it from currentSchedule");
             currentSchedule.remove(desc.toString());
           }
@@ -833,10 +817,6 @@ public class MeasurementScheduler extends Service {
   * @return false if the task should not be scheduled, based on the profile
   */
   private boolean adjustInterval(MeasurementTask task) {
-
-//    if (task.getType().equals("rrc")) {
-//      task.getDescription().intervalSec = 60;
-//    }
     Map<String, String> params = task.getDescription().parameters;
     float adjust = 1; // default
     if (params.containsKey("profile_1_freq")
@@ -994,20 +974,6 @@ public class MeasurementScheduler extends Service {
     
     for (MeasurementTask task : tasksFromServer) {
       task.measurementDesc.key = Config.SERVER_TASK_CLIENT_KEY;
-//      if (task.getDescription().count == MeasurementTask.INFINITE_COUNT) {
-//        if (!serverTasks.containsKey(task.getDescription().toString())) {
-//          if (adjustInterval(task)) {
-//            this.mainQueue.add(task);
-//          }
-//        }
-//        serverTasks.put(task.getDescription().toString(), task.getDescription().endTime);
-//      } 
-//      else {
-//        if (adjustInterval(task)) {
-//          this.mainQueue.add(task);
-//        }
-//
-//      }
     }
     
     updateSchedule(tasksFromServer, false);
@@ -1152,21 +1118,6 @@ public class MeasurementScheduler extends Service {
         tasksToAdd.add(newTask);
       } 
       else {
-//        // check for changes. If any parameter changes, it counts as a change.
-////        if (!currentSchedule.get(newId).getDescription()
-////            .equals(newTask.getDescription())) {
-//        if (!currentSchedule.get(newId).getDescription().toString()
-//            .equals(newTask.getDescription().toString())) {
-//          // If there's a change, replace the task with the new task from the server
-//          Logger.d(currentSchedule.get(newId).getDescription().toString() + " <---> " + newTask.getDescription().toString());
-//          idsToRemove.add(newId);
-////          newTask.setKey(Config.SERVER_TASK_CLIENT_KEY);
-//          if (newTask.getDescription().count == MeasurementTask.INFINITE_COUNT) {
-//            serverTasks.put(newTask.getDescription().toString(), newTask.getDescription().endTime);
-//          } 
-//          tasksToAdd.add(newTask);
-//        }
-        
         // any change other than starttime and endtime will be catched
         // We've seen the task
         missingDescs.remove(newDesc);
@@ -1204,10 +1155,6 @@ public class MeasurementScheduler extends Service {
       for (MeasurementTask task : tasksToAdd) {
         Logger.i("Add New Task: " + task.getDescription());
         this.mainQueue.add(task);
-//        if (task.getDescription().count == MeasurementTask.INFINITE_COUNT) {
-//          serverTasks.put(task.getDescription().toString(), task.getDescription().endTime);
-//        } 
-        //submitTask(task);
         currentSchedule.put(task.getDescription().toString(), task);
       }
     }    
