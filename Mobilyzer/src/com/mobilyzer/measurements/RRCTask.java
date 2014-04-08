@@ -945,10 +945,13 @@ public class RRCTask extends MeasurementTask {
       if (e.getMessage().equals("Rescheduled")) {
         try {
           // If the RRC task is enabled and we get partial data
-          if (desc.RRC && data.rttsSmall[0] != -1) {
+          if (desc.RRC && data.rttsSmall[0] != 7000) {
             Logger.i("RRC Reschedule: update the model on the GAE datastore");
             uploadRrcInferenceData(data);
             Logger.d("RRC Reschedule: Saving data complete");
+          }
+          else {
+            Logger.i("RRC Reschedule: no model available");
           }
         } catch (IOException ee) {
           ee.printStackTrace();
@@ -956,9 +959,12 @@ public class RRCTask extends MeasurementTask {
         }
         // Check if the upper layer tasks are enabled and we get partial results
         if (desc.runUpperLayerTests && desc.SIZES && !data.packetSizes.isEmpty()) {
-          Logger.i("RRC Reschedule: update the size on the GAE datastore");
+          Logger.i("RRC Reschedule: update the size on the GAE datastore, array size " + data.packetSizes.size());
           uploadRrcInferenceSizeData(data);
           Logger.d("RRC Reschedule: Saving data complete");
+        }
+        else {
+          Logger.i("RRC Reschedule: no size information available");
         }
       }
       throw e;
@@ -1035,7 +1041,7 @@ public class RRCTask extends MeasurementTask {
    * @param testId A unique ID identifying this set of tests
    */
   private void runSizeThresholdTest(final Integer[] times, RRCDesc desc, RRCTestData data,
-      long testId) {
+      long testId) throws MeasurementError {
 
     InetAddress serverAddr;
     try {
@@ -1047,6 +1053,16 @@ public class RRCTask extends MeasurementTask {
     }
     for (int i = 0; i < times.length; i++) {
       for (int j = desc.sizeGranularity; j <= 1024; j += desc.sizeGranularity) {
+        // Sometimes the network can change in the middle of a test
+        try {
+          checkIfWifi();
+        } catch (MeasurementError e) {
+          throw new MeasurementError("Rescheduled");
+        }
+        if (stopFlag) {
+          throw new MeasurementError("Cancelled");
+        }
+        
         try {
           long result = inferDemotionPacketSize(serverAddr, times[i], desc, j);
           data.setRrcSizeTestData(times[i], j, result, testId);

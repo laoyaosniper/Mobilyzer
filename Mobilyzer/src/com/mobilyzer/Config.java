@@ -12,7 +12,9 @@ public interface Config {
    * Strings migrated from string.xml
    */
   public static final String SERVER_URL = "https://openmobiledata.appspot.com";
+//  public static final String SERVER_URL = "https://mobiperf-udp.appspot.com";
   public static final String ANONYMOUS_SERVER_URL = "https://openmobiledata.appspot.com/anonymous";
+//  public static final String ANONYMOUS_SERVER_URL = "https://mobiperf-udp.appspot.com/anonymous";
   public static final String TEST_SERVER_URL = "";
   public static final String DEFAULT_USER = "Anonymous";
 
@@ -101,6 +103,7 @@ public interface Config {
   public static final long MAX_CHECKIN_RETRY_INTERVAL_SEC = 60L;
   public static final int MAX_CHECKIN_RETRY_COUNT = 3;
   public static final long PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC = 2 * 60 * 1000L;
+//  public static final long PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC = 5 * 1000L;
   
   // Reschedule delay for RRC task
   public static final long RESCHEDULE_DELAY = 10*60*1000;
