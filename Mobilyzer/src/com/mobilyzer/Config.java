@@ -102,6 +102,8 @@ public interface Config {
   public static final int MAX_CHECKIN_RETRY_COUNT = 3;
   public static final long PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC = 2 * 60 * 1000L;
   
+  public static final int DEFAULT_DATA_MONITOR_PERIOD_DAY= 1;
+  
   // Reschedule delay for RRC task
   public static final long RESCHEDULE_DELAY = 20*60*1000;
 }

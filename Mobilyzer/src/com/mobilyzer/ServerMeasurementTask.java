@@ -14,6 +14,7 @@
  */
 package com.mobilyzer;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.Callable;
@@ -30,10 +31,12 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
   private MeasurementTask realTask;
   private MeasurementScheduler scheduler;
   private ContextCollector contextCollector;
-  public ServerMeasurementTask(MeasurementTask task, MeasurementScheduler scheduler) {
+  private ResourceCapManager rManager;
+  public ServerMeasurementTask(MeasurementTask task, MeasurementScheduler scheduler, ResourceCapManager manager) {
     realTask = task;
     this.scheduler = scheduler;
     this.contextCollector= new ContextCollector();
+    this.rManager=manager;
   }
 
   /**
@@ -93,14 +96,34 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
     try {
       phoneUtils.acquireWakeLock();
 
-      if(!(phoneUtils.isCharging() ||
-          phoneUtils.getCurrentBatteryLevel() > Config.MIN_BATTERY_THRESHOLD)){
+//      if(!(phoneUtils.isCharging() ||
+//          phoneUtils.getCurrentBatteryLevel() > rManager.getBatteryThresh())){
+//        throw new MeasurementSkippedException("Not enough battery power");
+//      }
+      
+      if(!rManager.canScheduleExperiment()){
         throw new MeasurementSkippedException("Not enough battery power");
       }
+      
+      if (PhoneUtils.getPhoneUtils().getCurrentNetworkConnection()==PhoneUtils.TYPE_MOBILE){
+        try {
+          if(rManager.isOverDataLimit(realTask.getMeasurementType())) {
+            Logger.i("Skipping measurement - data limit is passed");
+            throw new MeasurementSkippedException("Over data limit");
+          }
+        } catch (IOException e) {
+          Logger.e("Exception occured during R/Wing of data stat file");
+          e.printStackTrace();
+        }
+
+      }
+      
+      
       broadcastMeasurementStart();
       try {
         contextCollector.setInterval(realTask.getDescription().contextIntervalSec);
         contextCollector.startCollector();
+        rManager.updateDataUsage(ResourceCapManager.PHONEUTILCOST);
         results = realTask.call(); 
         ArrayList<HashMap<String, String>> contextResults = 
             contextCollector.stopCollector();
@@ -108,6 +131,10 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
           r.addContextResults(contextResults);
           r.getDeviceProperty().dnResolvability=contextCollector.dnsConnectivity;
           r.getDeviceProperty().ipConnectivity=contextCollector.ipConnectivity;
+        }
+        
+        if (PhoneUtils.getPhoneUtils().getCurrentNetworkConnection()==PhoneUtils.TYPE_MOBILE){
+          rManager.updateDataUsage(realTask.getDataConsumed());
         }
         
         broadcastMeasurementEnd(results, null);

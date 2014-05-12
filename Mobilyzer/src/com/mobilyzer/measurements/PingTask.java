@@ -67,6 +67,9 @@ public class PingTask extends MeasurementTask{
   private String PING_METHOD_JAVA = "java_ping";
   private String PING_METHOD_HTTP = "http";
   private String targetIp = null;
+  //Track data consumption for this task to avoid exceeding user's limit  
+  private long dataConsumed;
+  
   /**
    * Encode ping specific parameters, along with common parameters inherited from MeasurmentDesc
    * @author wenjiezeng@google.com (Steve Zeng)
@@ -161,11 +164,13 @@ public class PingTask extends MeasurementTask{
     this.duration=Config.PING_COUNT_PER_MEASUREMENT*500;
     //    this.taskProgress=TaskProgress.FAILED;
     //    this.stopFlag=false;
+    this.dataConsumed=0;
   }
   
   protected PingTask(Parcel in) {
     super(in);
     duration = in.readLong();
+    dataConsumed = in.readLong();
   }
 
   public static final Parcelable.Creator<PingTask> CREATOR =
@@ -188,6 +193,7 @@ public class PingTask extends MeasurementTask{
   public void writeToParcel(Parcel dest, int flags) {
     super.writeToParcel(dest, flags);
     dest.writeLong(duration);
+    dest.writeLong(dataConsumed);
   }
   /**
    * Returns a copy of the PingTask
@@ -350,6 +356,8 @@ public class PingTask extends MeasurementTask{
         Config.PING_COUNT_PER_MEASUREMENT, targetIp);
       Logger.i("Running: " + command);
       pingProc = Runtime.getRuntime().exec(command);
+      
+      dataConsumed += pingTask.packetSizeByte * Config.PING_COUNT_PER_MEASUREMENT * 2;
 
       // Grab the output of the process that runs the ping command
       InputStream is = pingProc.getInputStream();
@@ -448,6 +456,9 @@ public class PingTask extends MeasurementTask{
       Logger.i("java ping succeeds");
       double packetLoss = 1 -
           ((double) rrts.size() / (double) Config.PING_COUNT_PER_MEASUREMENT);
+      
+      dataConsumed += pingTask.packetSizeByte * Config.PING_COUNT_PER_MEASUREMENT * 2;
+      
       result = constructResult(rrts, packetLoss,
         Config.PING_COUNT_PER_MEASUREMENT, PING_METHOD_JAVA);
     } catch (IllegalArgumentException e) {
@@ -505,6 +516,9 @@ public class PingTask extends MeasurementTask{
       Logger.i("RTT is " + rrts.toString());
       double packetLoss = 1
           - ((double) rrts.size() / (double) Config.PING_COUNT_PER_MEASUREMENT);
+      
+      dataConsumed += pingTask.packetSizeByte * Config.PING_COUNT_PER_MEASUREMENT * 2;
+      
       result = constructResult(rrts, packetLoss,
         Config.PING_COUNT_PER_MEASUREMENT, PING_METHOD_HTTP);
     } catch (MalformedURLException e) {
@@ -546,6 +560,16 @@ public class PingTask extends MeasurementTask{
     }else{
       this.duration=newDuration;
     }
+  }
+  
+  /**
+   * Data sent so far by this task.
+   * 
+   * We count packets sent directly to calculate the data sent
+   */
+  @Override
+  public long getDataConsumed() {
+    return dataConsumed;
   }
 
 }

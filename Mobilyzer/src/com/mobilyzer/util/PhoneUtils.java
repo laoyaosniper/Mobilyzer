@@ -115,6 +115,13 @@ public class PhoneUtils {
   private BroadcastReceiver broadcastReceiver;
   private int currentSignalStrength = NeighboringCellInfo.UNKNOWN_RSSI;
   
+  /** For monitoring the current network connection type**/
+  public static int TYPE_WIFI = 1;
+  public static int TYPE_MOBILE = 2;
+  public static int TYPE_NOT_CONNECTED = 0;
+  private int currentNetworkConnection= TYPE_NOT_CONNECTED; 
+
+  
   private DeviceInfo deviceInfo = null;
   /** IP compatibility status */
   // Indeterministic type due to client side timer expired
@@ -613,6 +620,42 @@ public class PhoneUtils {
         setCurrentRssi(signalStrength.getGsmSignalStrength());
       }
     }
+  }
+  
+  /**
+   * Fetches the new connectivity state from the connectivity manager directly.
+   */
+  private synchronized void updateConnectivityInfo() {
+    ConnectivityManager cm = (ConnectivityManager) context
+            .getSystemService(Context.CONNECTIVITY_SERVICE);
+    NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+    if (activeNetwork != null) {
+      if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
+        PhoneUtils.this.currentNetworkConnection = TYPE_WIFI;
+      }
+      if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
+        PhoneUtils.this.currentNetworkConnection = TYPE_MOBILE;
+      }
+    } else {
+      PhoneUtils.this.currentNetworkConnection = TYPE_NOT_CONNECTED;
+    }
+  }
+  
+  /**
+   * When alerted that the network connectivity has changed, change the 
+   * stored connectivity value.
+   */
+  private class ConnectivityChangeReceiver extends BroadcastReceiver {
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+      updateConnectivityInfo();
+
+    }
+  }
+
+  public synchronized int getCurrentNetworkConnection() {
+    return currentNetworkConnection;
   }
   
   private String getVersionStr() {

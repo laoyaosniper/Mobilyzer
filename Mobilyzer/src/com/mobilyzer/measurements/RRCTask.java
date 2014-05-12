@@ -57,6 +57,7 @@ import com.mobilyzer.exceptions.MeasurementError;
 import com.mobilyzer.util.Logger;
 import com.mobilyzer.util.MeasurementJsonConvertor;
 import com.mobilyzer.util.PhoneUtils;
+import com.mobilyzer.util.Util;
 
 import android.content.SharedPreferences;
 import android.net.TrafficStats;
@@ -88,6 +89,9 @@ public class RRCTask extends MeasurementTask {
 
   private volatile boolean stopFlag;
   private long duration;
+  
+  //Track data consumption for this task to avoid exceeding user's limit
+  public static long data_consumed = 0;
 
 
   /**
@@ -861,7 +865,8 @@ public class RRCTask extends MeasurementTask {
    * @throws MeasurementError
    */
   private RRCDesc runInferenceTests() throws MeasurementError {
-
+    data_consumed = 0;
+    
     // Fetch the existing model from the server, if it exists
     RRCDesc desc = (RRCDesc) measurementDesc;
     desc.testId = getTestId(PhoneUtils.getGlobalContext());
@@ -1146,6 +1151,8 @@ public class RRCTask extends MeasurementTask {
             e.printStackTrace();
             continue;
           }
+          
+          long currentRxTx=Util.getCurrentRxTxBytes();
           startTime = System.currentTimeMillis();
           HttpClient client = new DefaultHttpClient();
           HttpGet request = new HttpGet();
@@ -1164,7 +1171,12 @@ public class RRCTask extends MeasurementTask {
             sb.append(line + "\n");
           }
           in.close();
-
+          
+          //This may overestimate the data consumed, but there's no good way
+          // to tell what was us and what was another app
+          incrementData(Util.getCurrentRxTxBytes()-currentRxTx);
+          
+          
           // not really accurate, just rules out the worst cases of interference
           if (!packetMonitor.isTrafficInterfering(100, 100)) {
             break;
@@ -1218,7 +1230,8 @@ public class RRCTask extends MeasurementTask {
     if (times.length != desc.dnsTest.length) {
       desc.dnsTest = new int[times.length];
     }
-
+    long dataConsumedThisTask = 0;
+    
     long startTime = 0;
     long endTime = 0;
 
@@ -1276,6 +1289,8 @@ public class RRCTask extends MeasurementTask {
         }
         // When we fail to find the URL, we stop timing
         endTime = System.currentTimeMillis();
+        
+        dataConsumedThisTask += DnsLookupTask.AVG_DATA_USAGE_BYTE;
 
         // Check how many packets were sent again. If the expected number
         // of packets were sent, we can finish and go to the next task.
@@ -1298,6 +1313,7 @@ public class RRCTask extends MeasurementTask {
       }
       Logger.d("Time for DNS" + rtt);
     }
+    incrementData(dataConsumedThisTask);
   }
 
   /**
@@ -1324,6 +1340,7 @@ public class RRCTask extends MeasurementTask {
     }
     long startTime = 0;
     long endTime = 0;
+    long dataConsumedThisTask = 0;
 
     try {
       // For each inter-packet interval...
@@ -1354,6 +1371,10 @@ public class RRCTask extends MeasurementTask {
           // three-way handshake done when socket created
           Socket socket = new Socket(serverAddr, 80);
           endTime = System.currentTimeMillis();
+          
+          // Not exact, but also a smallish task...
+          dataConsumedThisTask += DnsLookupTask.AVG_DATA_USAGE_BYTE;
+
 
           // Check how many packets were sent again. If the expected number
           // of packets were sent, we can finish and go to the next task.
@@ -1381,6 +1402,7 @@ public class RRCTask extends MeasurementTask {
     } catch (IOException e) {
       e.printStackTrace();
     }
+    incrementData(dataConsumedThisTask);
   }
 
   /**
@@ -1501,10 +1523,14 @@ public class RRCTask extends MeasurementTask {
     long[] retval = {-1, -1};
     long numLost = 0;
     int i = 0;
+    long dataConsumedThisTask = 0;
 
     DatagramSocket socket = new DatagramSocket();
     DatagramPacket packetRcv = new DatagramPacket(rcvBuf, rcvBuf.length);
     DatagramPacket packet = new DatagramPacket(buf, buf.length, serverAddr, port);
+    
+    // number * (packet sent + packet received)
+    dataConsumedThisTask += num * (size + packetSize);
 
     try {
       socket.setSoTimeout(7000);
@@ -1530,6 +1556,7 @@ public class RRCTask extends MeasurementTask {
     retval[0] = endTime - startTime;
     retval[1] = numLost;
 
+    incrementData(dataConsumedThisTask);
     return retval;
   }
 
@@ -1564,9 +1591,12 @@ public class RRCTask extends MeasurementTask {
     long startTime = 0;
     byte[] buf = new byte[size];
     byte[] rcvBuf = new byte[rcvSize];
+    long dataConsumedThisTask = 0;
 
     DatagramSocket socket = new DatagramSocket();
     DatagramPacket packetRcv = new DatagramPacket(rcvBuf, rcvBuf.length);
+    
+    dataConsumedThisTask += (size + rcvSize);
 
     DatagramPacket packet = new DatagramPacket(buf, buf.length, serverAddr, port);
 
@@ -1584,7 +1614,7 @@ public class RRCTask extends MeasurementTask {
     }
     long endTime = System.currentTimeMillis();
     Logger.d("Sending complete: " + endTime);
-
+    incrementData(dataConsumedThisTask);
     return endTime - startTime;
   }
 
@@ -1797,5 +1827,23 @@ public class RRCTask extends MeasurementTask {
     } else {
       this.duration = newDuration;
     }
+  }
+  private synchronized static void incrementData(long data_increment) {
+    data_consumed += data_increment;
+}
+
+/**  
+ * For RRC inference, we calculate this precisely based on the number and size
+ * of packets sent.  For the TCP handshake and DNS tasks, we use small, fixed 
+ * values based on the average data consumption measured for those tasks.
+ * 
+ * For the HTTP task, we count <i>all</i> data sent during the task time towards
+ * the budget.  This will tend to overestimate the data used, but due to 
+ * retransmissions, etc, it is impossible to get a remotely accurate estimate 
+ * otherwise, I found.
+ */
+  @Override
+  public long getDataConsumed() {
+    return data_consumed;
   }
 }

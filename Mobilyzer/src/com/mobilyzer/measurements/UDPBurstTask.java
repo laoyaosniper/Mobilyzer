@@ -90,6 +90,10 @@ public class UDPBurstTask extends MeasurementTask {
   private long duration;
   private TaskProgress taskProgress;
   private volatile boolean stopFlag;
+  
+  // Track data consumption for this task to avoid exceeding user's limit
+  private long dataConsumed;
+
 
   /**
    * Encode UDP specific parameters, along with common parameters inherited from MeasurementDesc
@@ -225,6 +229,7 @@ public class UDPBurstTask extends MeasurementTask {
     this.taskProgress = TaskProgress.FAILED;
     this.stopFlag = false;
     this.duration = Config.DEFAULT_UDPBURST_DURATION;
+    this.dataConsumed = 0;
   }
 
   protected UDPBurstTask(Parcel in) {
@@ -232,6 +237,7 @@ public class UDPBurstTask extends MeasurementTask {
     taskProgress = (TaskProgress) in.readSerializable();
     stopFlag = in.readByte() != 0;
     duration = in.readLong();
+    dataConsumed = in.readLong();
   }
 
   public static final Parcelable.Creator<UDPBurstTask> CREATOR =
@@ -251,6 +257,7 @@ public class UDPBurstTask extends MeasurementTask {
     dest.writeSerializable(taskProgress);
     dest.writeByte((byte) (stopFlag ? 1 : 0));
     dest.writeLong(duration);
+    dest.writeLong(dataConsumed);
   }
 
   /**
@@ -479,6 +486,7 @@ public class UDPBurstTask extends MeasurementTask {
     // Resolve the server's name
     try {
       addr = InetAddress.getByName(desc.target);
+      dataConsumed+=DnsLookupTask.AVG_DATA_USAGE_BYTE;
       targetIp = addr.getHostAddress();
     } catch (UnknownHostException e) {
       throw new MeasurementError("Unknown host " + desc.target);
@@ -507,6 +515,7 @@ public class UDPBurstTask extends MeasurementTask {
 
       try {
         sock.send(packet);
+        dataConsumed+=packet.getLength();
       } catch (IOException e) {
         sock.close();
         throw new MeasurementError("Error sending " + desc.target);
@@ -559,6 +568,7 @@ public class UDPBurstTask extends MeasurementTask {
     }
     // Reconstruct UDP packet from flattened network data
     UDPPacket responsePacket = new UDPPacket(recvpacket.getData());
+    dataConsumed+=recvpacket.getLength();
 
     if (responsePacket.type == PKT_RESPONSE) {
       // Received seq number must be same with client seq
@@ -623,6 +633,7 @@ public class UDPBurstTask extends MeasurementTask {
 
 
     try {
+      dataConsumed += packet.getLength();
       sock.send(packet);
     } catch (IOException e) {
       sock.close();
@@ -662,6 +673,7 @@ public class UDPBurstTask extends MeasurementTask {
       }
 
       UDPPacket dataPacket = new UDPPacket(recvpacket.getData());
+      dataConsumed+=recvpacket.getLength();
       if (dataPacket.type == UDPBurstTask.PKT_DATA) {
         // Received seq number must be same with client seq
         if (dataPacket.seq != seq) {
@@ -831,5 +843,13 @@ public class UDPBurstTask extends MeasurementTask {
   public boolean stop() {
     stopFlag = true;
     return true;
+  }
+  
+  /**
+   * Based on a direct accounting of UDP packet sizes.
+   */
+  @Override
+  public long getDataConsumed() {
+    return dataConsumed;
   }
 }

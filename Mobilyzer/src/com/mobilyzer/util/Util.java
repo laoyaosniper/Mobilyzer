@@ -18,6 +18,7 @@ package com.mobilyzer.util;
 
 
 import android.content.Context;
+import android.net.TrafficStats;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -226,5 +227,11 @@ public class Util {
     UUID uuid=UUID.randomUUID();
     String uuidStr=uuid.toString();
     return uuidStr.substring(uuidStr.length()-10);
+  }
+  
+  
+  public static long getCurrentRxTxBytes(){
+    int uid = android.os.Process.myUid();
+    return TrafficStats.getUidRxBytes(uid)+TrafficStats.getUidTxBytes(uid);
   }
 }

@@ -105,6 +105,7 @@ public class MeasurementScheduler extends Service {
   //  private volatile HashMap <String, MeasurementTask> currentSchedule;
 
   private AlarmManager alarmManager;
+  private ResourceCapManager resourceCapManager;
   private volatile ConcurrentHashMap<String, TaskStatus> tasksStatus;
   // all the tasks are put in to this queue first, where they ordered based on their start time 
   private volatile PriorityBlockingQueue<MeasurementTask> mainQueue;
@@ -136,6 +137,7 @@ public class MeasurementScheduler extends Service {
     this.pendingTasks = new ConcurrentHashMap<MeasurementTask, Future<MeasurementResult[]>>();
     this.tasksStatus = new ConcurrentHashMap<String, MeasurementScheduler.TaskStatus>();
     this.alarmManager = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
+    this.resourceCapManager = new ResourceCapManager(Config.DEFAULT_BATTERY_THRESH_PRECENT, this);
 
     this.serverTasks = new HashMap<String, Date>();
     //    this.currentSchedule = new HashMap<String, MeasurementTask>();
@@ -442,7 +444,7 @@ public class MeasurementScheduler extends Service {
             // User task can override the power policy. So a different task wrapper is used.
             future = measurementExecutor.submit(new UserMeasurementTask(ready, this));
           } else {
-            future = measurementExecutor.submit(new ServerMeasurementTask(ready, this));
+            future = measurementExecutor.submit(new ServerMeasurementTask(ready, this, resourceCapManager));
           }
 
           synchronized (pendingTasks) {
@@ -656,6 +658,7 @@ public class MeasurementScheduler extends Service {
       persistParams(Config.PREF_KEY_BATTERY_THRESHOLD
         , String.valueOf(this.batteryThreshold));
     }
+    this.resourceCapManager.setBatteryThresh(this.batteryThreshold);
     return this.batteryThreshold;
   }
 
@@ -925,7 +928,7 @@ public class MeasurementScheduler extends Service {
   private void getTasksFromServer() throws IOException {
     Logger.i("Downloading tasks from the server");
     checkin.getCookie();
-    List<MeasurementTask> tasksFromServer = checkin.checkin();
+    List<MeasurementTask> tasksFromServer = checkin.checkin(resourceCapManager);
     // The new task schedule overrides the old one
 
     Logger.i("Received " + tasksFromServer.size() + " task(s) from server");
@@ -1159,7 +1162,7 @@ private void uploadResults() {
     for(MeasurementResult r: finishedTasks){
       r.getMeasurementDesc().parameters=null;
     }
-    this.checkin.uploadMeasurementResult(finishedTasks);
+    this.checkin.uploadMeasurementResult(finishedTasks, resourceCapManager);
   } catch (IOException e) {
     Logger.e("Error when uploading message");
   }

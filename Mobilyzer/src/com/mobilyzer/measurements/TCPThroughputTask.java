@@ -745,4 +745,13 @@ public class TCPThroughputTask extends MeasurementTask {
     stopFlag=true;
     return true;
   }
+  
+  /**
+   * Based on the measured total data sent and received, the same returned as
+   * a measurement result
+   */
+  @Override
+  public long getDataConsumed() {
+    return totalSendSize + totalRevSize;
+  }
 }

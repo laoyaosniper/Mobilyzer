@@ -225,5 +225,14 @@ public abstract class MeasurementTask
     dest.writeParcelable(measurementDesc, flags);
     dest.writeString(taskId);
   }
+  
+  /**
+   * All measurement tasks must provide measurements of how much data they have
+   * used to be fetched when the task completes.  This allows us to make sure we
+   * stay under the data limit.
+   * 
+   * @return Data consumed, in bytes
+   */
+  public abstract long getDataConsumed();
 
 }

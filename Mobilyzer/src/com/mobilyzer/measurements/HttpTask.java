@@ -74,6 +74,9 @@ public class HttpTask extends MeasurementTask {
   // Not used by the HTTP protocol. Just in case we do not receive a status line
   // from the response
   public static final int DEFAULT_STATUS_CODE = 0;
+  
+  //Track data consumption for this task to avoid exceeding user's limit  
+  private long dataConsumed;
 
   private AndroidHttpClient httpClient = null;
 
@@ -83,11 +86,13 @@ public class HttpTask extends MeasurementTask {
     super(new HttpDesc(desc.key, desc.startTime, desc.endTime, desc.intervalSec,
       desc.count, desc.priority, desc.contextIntervalSec, desc.parameters));
     this.duration=Config.DEFAULT_HTTP_TASK_DURATION;
+    this.dataConsumed = 0;
   }
   
   protected HttpTask(Parcel in) {
     super(in);
     duration = in.readLong();
+    dataConsumed = in.readLong();
   }
 
   public static final Parcelable.Creator<HttpTask> CREATOR =
@@ -105,6 +110,7 @@ public class HttpTask extends MeasurementTask {
   public void writeToParcel(Parcel dest, int flags) {
     super.writeToParcel(dest, flags);
     dest.writeLong(duration);
+    dest.writeLong(dataConsumed);
   }
   /**
    * The description of a HTTP measurement 
@@ -208,6 +214,8 @@ public class HttpTask extends MeasurementTask {
     TaskProgress taskProgress=TaskProgress.FAILED;
     String errorMsg = "";
     InputStream inputStream = null;
+    
+    long currentRxTx=Util.getCurrentRxTxBytes();
 
     try {
       // set the download URL, a URL that points to a file on the Internet
@@ -318,6 +326,8 @@ public class HttpTask extends MeasurementTask {
         taskProgress, this.measurementDesc);
 
       result.addResult("code", statusCode);
+      
+      dataConsumed+=(Util.getCurrentRxTxBytes()-currentRxTx);
 
       if (taskProgress==TaskProgress.COMPLETED) {
         result.addResult("time_ms", duration);
@@ -396,5 +406,13 @@ public class HttpTask extends MeasurementTask {
     }else{
       this.duration=newDuration;
     }
+  }
+  
+  /**
+   * Data used so far by the task.
+   */
+  @Override
+  public long getDataConsumed() {
+    return dataConsumed;
   }
 }

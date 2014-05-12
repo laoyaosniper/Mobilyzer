@@ -113,7 +113,7 @@ public class Checkin {
     return this.lastCheckin;
   }
   
-  public List<MeasurementTask> checkin() throws IOException {
+  public List<MeasurementTask> checkin(ResourceCapManager resourceCapManager) throws IOException {
     Logger.i("Checkin.checkin() called");
     boolean checkinSuccess = false;
     try {
@@ -125,17 +125,21 @@ public class Checkin {
       status.put("model", info.model);
       status.put("os", info.os);
       /**
-       * TODO(Hongyi): checkin task don't belongs to any app. So we just fill
+       * TODO: checkin task don't belongs to any app. So we just fill
        * request_app field with server task key   
        */
       status.put("properties", MeasurementJsonConvertor.encodeToJson(
         phoneUtils.getDeviceProperty(Config.CHECKIN_KEY)));
+      
+      resourceCapManager.updateDataUsage(ResourceCapManager.PHONEUTILCOST);
       
       Logger.d(status.toString());
       
       
       String result = serviceRequest("checkin", status.toString());
       Logger.d("Checkin result: " + result);
+      
+      resourceCapManager.updateDataUsage(result.length());
       
       // Parse the result
       Vector<MeasurementTask> schedule = new Vector<MeasurementTask>();
@@ -226,7 +230,7 @@ public class Checkin {
     return results;
   }
   
-  public void uploadMeasurementResult(Vector<MeasurementResult> finishedTasks)
+  public void uploadMeasurementResult(Vector<MeasurementResult> finishedTasks, ResourceCapManager resourceCapManager)
       throws IOException {
     JSONArray resultArray = readResultsFromFile();
     for (MeasurementResult result : finishedTasks) {
@@ -239,6 +243,7 @@ public class Checkin {
     
     Logger.i("TaskSchedule.uploadMeasurementResult() uploading: " + 
         resultArray.toString());
+    resourceCapManager.updateDataUsage(resultArray.toString().length());
     String response = serviceRequest("postmeasurement", resultArray.toString());
     try {
       JSONObject responseJson = new JSONObject(response);

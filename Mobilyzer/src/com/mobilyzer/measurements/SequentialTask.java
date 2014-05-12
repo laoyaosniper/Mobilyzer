@@ -246,4 +246,11 @@ public class SequentialTask extends MeasurementTask{
   public MeasurementTask[] getTasks() {
     return tasks.toArray(new MeasurementTask[tasks.size()]);
   }
+  
+  //TODO
+  @Override
+  public long getDataConsumed() {
+    return 0;
+  }
+
 }

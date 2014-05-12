@@ -55,6 +55,8 @@ public class ParallelTask extends MeasurementTask{
   public static final String TYPE = "parallel";
   // Human readable name for the task
   public static final String DESCRIPTOR = "parallel";
+  
+  private long dataConsumed;
 
 
   public static class ParallelDesc extends MeasurementDesc {     
@@ -112,6 +114,7 @@ public class ParallelTask extends MeasurementTask{
       }
     }
     this.duration=maxduration;
+    this.dataConsumed=0;
 
   }
   
@@ -129,6 +132,7 @@ public class ParallelTask extends MeasurementTask{
       }
     }
     this.duration = maxDuration;
+    this. dataConsumed = 0;
   }
 
   public static final Parcelable.Creator<ParallelTask> CREATOR
@@ -230,5 +234,11 @@ public class ParallelTask extends MeasurementTask{
 
   public MeasurementTask[] getTasks() {
     return tasks.toArray(new MeasurementTask[tasks.size()]);
+  }
+  
+  //TODO
+  @Override
+  public long getDataConsumed() {
+    return dataConsumed;
   }
 }

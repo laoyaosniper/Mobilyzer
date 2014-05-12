@@ -74,6 +74,10 @@ public class TracerouteTask extends MeasurementTask
   private long totalRunningTime;
   private int ttl; 
   private int maxHopCount;
+  
+  //Track data consumption for this task to avoid exceeding user's limit
+  private long dataConsumed;
+
   /**
    * The description of the Traceroute measurement 
    */
@@ -204,6 +208,7 @@ public class TracerouteTask extends MeasurementTask
     this.ttl=1;
     this.maxHopCount=((TracerouteDesc) this.measurementDesc).maxHopCount;
     this.totalRunningTime=0;
+    this.dataConsumed=0;
   }
 
   protected TracerouteTask(Parcel in) {
@@ -216,6 +221,7 @@ public class TracerouteTask extends MeasurementTask
     ttl = in.readInt();
     maxHopCount = ((TracerouteDesc) this.measurementDesc).maxHopCount;
     totalRunningTime=in.readLong();
+    dataConsumed=in.readLong();
   }
 
   public static final Parcelable.Creator<TracerouteTask> CREATOR
@@ -238,6 +244,7 @@ public class TracerouteTask extends MeasurementTask
     dest.writeByte((byte)(pauseFlag ? 1 : 0));
     dest.writeInt(ttl);
     dest.writeLong(totalRunningTime);
+    dest.writeLong(dataConsumed);
   }
 
   /**
@@ -307,6 +314,11 @@ public class TracerouteTask extends MeasurementTask
             }
           }
           pingProc = Runtime.getRuntime().exec(command);
+          
+          // Actual packet is 28 bytes larger than the size specified.
+          // Three packets are sent in each direction
+          dataConsumed += (task.packetSizeByte + 28) * 2 * 3;
+
 
           // Wait for process to finish
           // Enforce thread timeout if pingProc doesn't respond
@@ -634,6 +646,15 @@ public class TracerouteTask extends MeasurementTask
   public void updateTotalRunningTime(long duration){
     this.totalRunningTime+=duration;
   }
+  
+  /**
+   * Based on counting the number of pings sent
+   */
+  @Override
+  public long getDataConsumed() {
+    return dataConsumed;
+  }
+
 
 
 }
