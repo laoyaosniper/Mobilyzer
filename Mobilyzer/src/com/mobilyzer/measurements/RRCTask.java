@@ -780,10 +780,27 @@ public class RRCTask extends MeasurementTask {
 
   @Override
   public MeasurementResult[] call() throws MeasurementError {
-    RRCDesc desc = runInferenceTests();
-    MeasurementResult[] mrArray = new MeasurementResult[1];
-    mrArray[0] = constructResultStandard(desc);;
-    return mrArray;
+    try {
+      RRCDesc desc = runInferenceTests();
+      MeasurementResult[] mrArray = new MeasurementResult[1];
+      mrArray[0] = constructResultStandard(desc);;
+      return mrArray;
+    } catch(MeasurementError e) {
+      if (e.getMessage().equals("Rescheduled")) {
+        stopFlag=false;
+        PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
+        MeasurementResult result = new MeasurementResult(phoneUtils.getDeviceInfo().deviceId, 
+            phoneUtils.getDeviceProperty(this.getKey()), RRCTask.TYPE, 
+            System.currentTimeMillis() * 1000, TaskProgress.RESCHEDULED, this.measurementDesc);
+        Logger.i(MeasurementJsonConvertor.toJsonString(result));
+        MeasurementResult[] mrArray= new MeasurementResult[1];
+        mrArray[0]=result;
+        return mrArray;
+      }
+      else {
+        throw e;
+      }
+    }
   }
 
   @Override
@@ -858,6 +875,7 @@ public class RRCTask extends MeasurementTask {
       return desc;
     }
 
+    RRCTestData data = new RRCTestData(desc.size, desc.testId);
     try {
       /*
        * Suspend all other tasks performed by the app as they can interfere. Although we have a
@@ -865,9 +883,6 @@ public class RRCTask extends MeasurementTask {
        * have scheduled other tests to be every 5 minutes, which can cause the RRC task to never
        * successfully complete without having to abort.
        */
-
-      RRCTestData data = new RRCTestData(desc.size, desc.testId);
-
       // If the RRC task is enabled
       if (desc.RRC) {
         // Set up the connection to the echo server
@@ -926,6 +941,33 @@ public class RRCTask extends MeasurementTask {
       e.printStackTrace();
     } catch (InterruptedException e) {
       e.printStackTrace();
+    } catch (MeasurementError e) {
+      if (e.getMessage().equals("Rescheduled")) {
+        try {
+          // If the RRC task is enabled and we get partial data
+          if (desc.RRC && data.rttsSmall[0] != 7000) {
+            Logger.i("RRC Reschedule: update the model on the GAE datastore");
+            uploadRrcInferenceData(data);
+            Logger.d("RRC Reschedule: Saving data complete");
+          }
+          else {
+            Logger.i("RRC Reschedule: no model available");
+          }
+        } catch (IOException ee) {
+          ee.printStackTrace();
+          Logger.e("Data not saved: " + ee.getMessage());
+        }
+        // Check if the upper layer tasks are enabled and we get partial results
+        if (desc.runUpperLayerTests && desc.SIZES && !data.packetSizes.isEmpty()) {
+          Logger.i("RRC Reschedule: update the size on the GAE datastore, array size " + data.packetSizes.size());
+          uploadRrcInferenceSizeData(data);
+          Logger.d("RRC Reschedule: Saving data complete");
+        }
+        else {
+          Logger.i("RRC Reschedule: no size information available");
+        }
+      }
+      throw e;
     }
 
     return desc;
@@ -999,7 +1041,7 @@ public class RRCTask extends MeasurementTask {
    * @param testId A unique ID identifying this set of tests
    */
   private void runSizeThresholdTest(final Integer[] times, RRCDesc desc, RRCTestData data,
-      long testId) {
+      long testId) throws MeasurementError {
 
     InetAddress serverAddr;
     try {
@@ -1011,6 +1053,16 @@ public class RRCTask extends MeasurementTask {
     }
     for (int i = 0; i < times.length; i++) {
       for (int j = desc.sizeGranularity; j <= 1024; j += desc.sizeGranularity) {
+        // Sometimes the network can change in the middle of a test
+        try {
+          checkIfWifi();
+        } catch (MeasurementError e) {
+          throw new MeasurementError("Rescheduled");
+        }
+        if (stopFlag) {
+          throw new MeasurementError("Cancelled");
+        }
+        
         try {
           long result = inferDemotionPacketSize(serverAddr, times[i], desc, j);
           data.setRrcSizeTestData(times[i], j, result, testId);
@@ -1060,7 +1112,11 @@ public class RRCTask extends MeasurementTask {
         // competing traffic.
         for (int j = 0; j < desc.GIVEUP_THRESHHOLD; j++) {
           // Sometimes the network can change in the middle of a test
-          checkIfWifi();
+          try {
+            checkIfWifi();
+          } catch (MeasurementError e) {
+            throw new MeasurementError("Rescheduled");
+          }
           if (stopFlag) {
             throw new MeasurementError("Cancelled");
           }
@@ -1172,7 +1228,11 @@ public class RRCTask extends MeasurementTask {
       for (int j = 0; j < desc.GIVEUP_THRESHHOLD; j++) {
 
         // Sometimes the network can change in the middle of a test
-        checkIfWifi();
+        try {
+          checkIfWifi();
+        } catch (MeasurementError e) {
+          throw new MeasurementError("Rescheduled");
+        }
         if (stopFlag) {
           throw new MeasurementError("Cancelled");
         }
@@ -1270,7 +1330,11 @@ public class RRCTask extends MeasurementTask {
       for (int i = 0; i < times.length; i++) {
         // On a failure, try again until a threshhold is reached.
         for (int j = 0; j < desc.GIVEUP_THRESHHOLD; j++) {
-          checkIfWifi();
+          try {
+            checkIfWifi();
+          } catch (MeasurementError e) {
+            throw new MeasurementError("Rescheduled");
+          }
           if (stopFlag) {
             throw new MeasurementError("Cancelled");
           }
@@ -1360,7 +1424,11 @@ public class RRCTask extends MeasurementTask {
 
     for (int i = 0; i <= desc.size; i++) {
 
-      checkIfWifi();
+      try {
+        checkIfWifi();
+      } catch (MeasurementError e) {
+        throw new MeasurementError("Rescheduled");
+      }
       if (stopFlag) {
         throw new MeasurementError("Cancelled");
       }
@@ -1706,7 +1774,8 @@ public class RRCTask extends MeasurementTask {
         timeToWait = timeToWait * 2;
       } else {
         // if it's taking a while, give up this RRC test
-        throw new MeasurementError("Not on Wifi, timeout after backoff to 500s");
+        Logger.e("Still not on cellular, timeout after backoff to 500s");
+        throw new MeasurementError("Still not on cellular, timeout after backoff to 500s");
       }
       try {
         waitTime(timeToWait, false);

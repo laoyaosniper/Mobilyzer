@@ -7,7 +7,7 @@ package com.mobilyzer;
 
 public interface Config {
   // Important: keep same with the version_code and version_name in strings.xml
-  public static final String version = "1";
+  public static final String version = "3";
   /**
    * Strings migrated from string.xml
    */
@@ -31,7 +31,7 @@ public interface Config {
   public static final String TASK_RESUMED = "TASK_RESUMED";
   public static final String TASK_CANCELED = "TASK_CENCELED";
   public static final String TASK_STOPPED = "TASK_STOPPED";
-
+  public static final String TASK_RESCHEDULED = "TASK_RESCHEDULED";
 
 
   /** Types for message between API and scheduler**/
@@ -55,8 +55,8 @@ public interface Config {
   /** The default maximum battery level if we cannot read it from the system */
   public static final int DEFAULT_BATTERY_SCALE = 100;
 
-  /** Tasks expire in one day. Expired tasks will be removed from the scheduler */
-  public static final long TASK_EXPIRATION_MSEC = 24 * 3600 * 1000;
+  /** Tasks expire in a bit more than two days. Expired tasks will be removed from the scheduler */
+  public static final long TASK_EXPIRATION_MSEC = 2 * 24 * 3600 * 1000 + 1800 * 1000;
   /** Default interval in seconds between system measurements of a given measurement type */
   public static final double DEFAULT_SYSTEM_MEASUREMENT_INTERVAL_SEC = 15 * 60;
   /** Default interval in seconds between context collection */
@@ -101,4 +101,7 @@ public interface Config {
   public static final long MAX_CHECKIN_RETRY_INTERVAL_SEC = 60L;
   public static final int MAX_CHECKIN_RETRY_COUNT = 3;
   public static final long PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC = 2 * 60 * 1000L;
+  
+  // Reschedule delay for RRC task
+  public static final long RESCHEDULE_DELAY = 20*60*1000;
 }

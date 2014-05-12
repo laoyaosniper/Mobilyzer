@@ -152,13 +152,18 @@ public class ContextCollector {
       contextResultArray.add(currentContext);
     }
     
+//    if(ipConnectivity.equals("")){
+//      ipConnectivity = phoneUtils.getIpConnectivity(); 
+//    }
+//    if(dnsConnectivity.equals("")){
+//      dnsConnectivity = phoneUtils.getDnResolvability();
+//    }
     if(ipConnectivity.equals("")){
-      ipConnectivity = phoneUtils.getIpConnectivity(); 
+      ipConnectivity = "NOT SUPPORTED";
     }
     if(dnsConnectivity.equals("")){
-      dnsConnectivity = phoneUtils.getDnResolvability();
+      dnsConnectivity = "NOT SUPPORTED";
     }
-
     
     return contextResultArray;
   }

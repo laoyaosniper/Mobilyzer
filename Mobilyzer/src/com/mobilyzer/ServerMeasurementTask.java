@@ -72,6 +72,10 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
         if(results[0].getTaskProgress()==TaskProgress.PAUSED){
           intent.putExtra(UpdateIntent.TASK_STATUS_PAYLOAD, Config.TASK_PAUSED);
         }
+        else if(results[0].getTaskProgress()==TaskProgress.RESCHEDULED){
+          intent.putExtra(UpdateIntent.TASK_STATUS_PAYLOAD, Config.TASK_RESCHEDULED);
+          intent.putExtra(UpdateIntent.RESULT_PAYLOAD, results);
+        }
         else {
           intent.putExtra(UpdateIntent.TASK_STATUS_PAYLOAD, Config.TASK_FINISHED);
           intent.putExtra(UpdateIntent.RESULT_PAYLOAD, results);

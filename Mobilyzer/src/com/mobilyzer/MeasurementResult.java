@@ -62,8 +62,8 @@ public class MeasurementResult implements Parcelable {
   private HashMap<String, String> values;
   private ArrayList<HashMap<String, String>> contextResults;
 
-  public enum TaskProgress {// TODO changing paused to scheduled?
-    COMPLETED, PAUSED, FAILED
+  public enum TaskProgress {
+    COMPLETED, PAUSED, FAILED, RESCHEDULED
   }
 
   /**
@@ -193,6 +193,13 @@ public class MeasurementResult implements Parcelable {
     this.taskProgress = progress;
   }
 
+  /**
+   * @return key/value pairs of measurement result
+   */
+  public HashMap<String,String> getValues(){
+    return this.values;
+  }
+  
   /**
    * Check if this task is succeed
    * @return true if taskProgress equals to COMPLETED, false otherwise
@@ -400,11 +407,10 @@ public class MeasurementResult implements Parcelable {
 
     if (taskProgress == TaskProgress.COMPLETED) {
       printer.println("IP addr: " + values.get("target_ip"));
-      printer.println("Timestamp: " + Util.getTimeStringFromMicrosecond(properties.timestamp));
       printIPTestResult(printer);
-      printer.println("Packet size: " + desc.packetSizeByte + "B");
-      printer.println("Number of packets to be sent: " + desc.udpBurstCount);
-      printer.println("Interval between packets: " + desc.udpInterval + "ms");
+//      printer.println("Packet size: " + desc.packetSizeByte + "B");
+//      printer.println("Number of packets to be sent: " + desc.udpBurstCount);
+//      printer.println("Interval between packets: " + desc.udpInterval + "ms");
 
       String lossRatio = String.format("%.2f", Double.parseDouble(values.get("loss_ratio")) * 100);
       String outOfOrderRatio =
@@ -466,6 +472,12 @@ public class MeasurementResult implements Parcelable {
   
   private void getRRCResult(StringBuilderPrinter printer, HashMap<String, String> values) {
     printer.println("[RRC Inference]");
+    if (taskProgress == TaskProgress.COMPLETED) {
+      printer.println("Succeed!");
+    }
+    else {
+      printer.println("Failed!");
+    }
     printer.println("Results uploaded to server");
   }
   /**
@@ -479,7 +491,6 @@ public class MeasurementResult implements Parcelable {
    * Print ip connectivity and hostname resolvability result
    */
   private void printIPTestResult(StringBuilderPrinter printer) {
-    // Hongyi: temporarily skip this test
 //    printer.println("IPv4/IPv6 Connectivity: " + properties.ipConnectivity);
 //    printer.println("IPv4/IPv6 Domain Name Resolvability: " + properties.dnResolvability);
   }
