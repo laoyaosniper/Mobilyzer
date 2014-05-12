@@ -14,8 +14,11 @@
 package com.mobilyzer;
 
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
@@ -32,6 +35,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import org.json.JSONException;
+import org.json.JSONObject;
+
 import com.mobilyzer.Config;
 import com.mobilyzer.MeasurementTask;
 import com.mobilyzer.UpdateIntent;
@@ -68,7 +73,7 @@ public class MeasurementScheduler extends Service {
   public enum TaskStatus {
     FINISHED, PAUSED, CANCELLED, SCHEDULED, RUNNING, NOTFOUND
   }
-  
+
   public enum DataUsageProfile{
     PROFILE1 , PROFILE2, PROFILE3, PROFILE4, UNLIMITED, NOTASSIGNED
   }
@@ -84,9 +89,9 @@ public class MeasurementScheduler extends Service {
   private int checkinRetryCnt;
   private CheckinTask checkinTask;
   private Calendar lastCheckinTime;
-  
+
   private int batteryThreshold;
-//  private int dataLimit;//in Byte
+  //  private int dataLimit;//in Byte
   private DataUsageProfile dataUsageProfile;
 
 
@@ -95,8 +100,9 @@ public class MeasurementScheduler extends Service {
   private PendingIntent measurementIntentSender;
   private PendingIntent checkinIntentSender;
   private PendingIntent checkinRetryIntentSender;
-  
+
   private volatile HashMap <String, Date> serverTasks;
+  //  private volatile HashMap <String, MeasurementTask> currentSchedule;
 
   private AlarmManager alarmManager;
   private volatile ConcurrentHashMap<String, TaskStatus> tasksStatus;
@@ -117,7 +123,7 @@ public class MeasurementScheduler extends Service {
   public void onCreate() {
     Logger.d("MeasurementScheduler -> onCreate called");
     PhoneUtils.setGlobalContext(this.getApplicationContext());
-    
+
     phoneUtils = PhoneUtils.getPhoneUtils();
     phoneUtils.registerSignalStrengthListener();
 
@@ -130,8 +136,9 @@ public class MeasurementScheduler extends Service {
     this.pendingTasks = new ConcurrentHashMap<MeasurementTask, Future<MeasurementResult[]>>();
     this.tasksStatus = new ConcurrentHashMap<String, MeasurementScheduler.TaskStatus>();
     this.alarmManager = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
-    
-    this.serverTasks= new HashMap<String, Date>();
+
+    this.serverTasks = new HashMap<String, Date>();
+    //    this.currentSchedule = new HashMap<String, MeasurementTask>();
 
     this.idToClientKey = new ConcurrentHashMap<String, String>();
 
@@ -144,13 +151,14 @@ public class MeasurementScheduler extends Service {
     this.checkinRetryIntervalSec = Config.MIN_CHECKIN_RETRY_INTERVAL_SEC;
     this.checkinRetryCnt = 0;
     this.checkinTask = new CheckinTask();
-    
+
     this.batteryThreshold=-1;
     this.checkinIntervalSec = -1;
     this.dataUsageProfile=DataUsageProfile.NOTASSIGNED;
 
     phoneUtils = PhoneUtils.getPhoneUtils();
-    
+    loadSchedulerState();
+
     // Register activity specific BroadcastReceiver here
     IntentFilter filter = new IntentFilter();
     filter.addAction(UpdateIntent.CHECKIN_ACTION);
@@ -170,7 +178,7 @@ public class MeasurementScheduler extends Service {
           String taskKey = intent.getStringExtra(UpdateIntent.CLIENTKEY_PAYLOAD);
           int priority =
               intent.getIntExtra(UpdateIntent.TASK_PRIORITY_PAYLOAD,
-                  MeasurementTask.INVALID_PRIORITY);
+                MeasurementTask.INVALID_PRIORITY);
 
           Logger.e(intent.getStringExtra(UpdateIntent.TASK_STATUS_PAYLOAD) + " " + taskid + " "
               + taskKey);
@@ -179,7 +187,7 @@ public class MeasurementScheduler extends Service {
             Parcelable[] results = intent.getParcelableArrayExtra(UpdateIntent.RESULT_PAYLOAD);
             if (results != null) {
               sendResultToClient(results, priority, taskKey, taskid);
-              
+
               for ( Object obj : results ) {
                 try {
                   MeasurementResult result = (MeasurementResult) obj;
@@ -197,23 +205,23 @@ public class MeasurementScheduler extends Service {
             }
             handleMeasurement();
           } else if (intent.getStringExtra(UpdateIntent.TASK_STATUS_PAYLOAD).equals(
-              Config.TASK_PAUSED)) {
+            Config.TASK_PAUSED)) {
             tasksStatus.put(taskid, TaskStatus.PAUSED);
           } else if (intent.getStringExtra(UpdateIntent.TASK_STATUS_PAYLOAD).equals(
-              Config.TASK_STOPPED)) {
+            Config.TASK_STOPPED)) {
             tasksStatus.put(taskid, TaskStatus.SCHEDULED);
           } else if (intent.getStringExtra(UpdateIntent.TASK_STATUS_PAYLOAD).equals(
-              Config.TASK_CANCELED)) {
+            Config.TASK_CANCELED)) {
             tasksStatus.put(taskid, TaskStatus.CANCELLED);
             Parcelable[] results = intent.getParcelableArrayExtra(UpdateIntent.RESULT_PAYLOAD);
             if (results != null) {
               sendResultToClient(results, priority, taskKey, taskid);
             }
           } else if (intent.getStringExtra(UpdateIntent.TASK_STATUS_PAYLOAD).equals(
-              Config.TASK_STARTED)) {
+            Config.TASK_STARTED)) {
             tasksStatus.put(taskid, TaskStatus.RUNNING);
           } else if (intent.getStringExtra(UpdateIntent.TASK_STATUS_PAYLOAD).equals(
-              Config.TASK_RESUMED)) {
+            Config.TASK_RESUMED)) {
             tasksStatus.put(taskid, TaskStatus.RUNNING);
           }
         } else if (intent.getAction().equals(UpdateIntent.CHECKIN_ACTION)
@@ -237,7 +245,7 @@ public class MeasurementScheduler extends Service {
       Logger.i("Saving result to file...");
       BufferedOutputStream writer =
           new BufferedOutputStream(openFileOutput("results",
-              Context.MODE_PRIVATE | Context.MODE_APPEND));
+            Context.MODE_PRIVATE | Context.MODE_APPEND));
       result += "\n";
       writer.write(result.getBytes());
       writer.close();
@@ -247,9 +255,9 @@ public class MeasurementScheduler extends Service {
       Logger.e("", e);
     }
   }
-  
-  /**
-   * Hongyi: This callback ensures that we always use newest version scheduler
+
+  /*
+   * This callback ensures that we always use newest version scheduler
    *   on the device
    */
   @Override
@@ -290,7 +298,7 @@ public class MeasurementScheduler extends Service {
     SharedPreferences prefs =
         PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
     boolean isForced = (PhoneUtils.clientKeySet.size() == 1);
-    
+
     String currentBatteryThreshold = prefs.getString(Config.PREF_KEY_BATTERY_THRESHOLD
       , String.valueOf(Config.DEFAULT_BATTERY_THRESH_PRECENT));
     setBatteryThresh(isForced, Integer.parseInt(currentBatteryThreshold));
@@ -300,7 +308,7 @@ public class MeasurementScheduler extends Service {
     String currentCheckinInterval = prefs.getString(Config.PREF_KEY_CHECKIN_INTERVAL
       , String.valueOf(Config.DEFAULT_CHECKIN_INTERVAL_SEC));
     setCheckinInterval(false, Long.parseLong(currentCheckinInterval));
-    
+
     // Fetch the data limit with 250 MB as a default
     String currentProfile = prefs.getString(Config.PREF_KEY_DATA_USAGE_PROFILE
       , DataUsageProfile.PROFILE3.name());
@@ -310,12 +318,12 @@ public class MeasurementScheduler extends Service {
         + this.checkinIntervalSec + ", Battery Threshold= "
         + this.batteryThreshold + ", Profile=" + this.dataUsageProfile.name());
   }
-  
+
   @Override
   public IBinder onBind(Intent intent) {
     return messenger.getBinder();
   }
-  
+
   @Override
   public boolean onUnbind(Intent intent){
     // All clients unbind by calling unbindService(). We can safely stop scheduler
@@ -323,14 +331,14 @@ public class MeasurementScheduler extends Service {
     this.stopScheduler();
     return false;
   }
-  
+
   @Override
   public void onDestroy() {
     Logger.d("MeasurementScheduler -> onDestroy");
     super.onDestroy();
     cleanUp();
   }
-  
+
   // return the current running task
   public synchronized MeasurementTask getCurrentTask() {
     return currentTask;
@@ -379,9 +387,9 @@ public class MeasurementScheduler extends Service {
 
         MeasurementDesc desc = ready.getDescription();
         long newStartTime = desc.startTime.getTime() + (long) desc.intervalSec * 1000;
-        
+
         if (desc.count == MeasurementTask.INFINITE_COUNT
-            && desc.priority == MeasurementTask.INVALID_PRIORITY) {
+            && desc.priority != MeasurementTask.USER_PRIORITY) {
           if (serverTasks.containsKey(desc.toString())
               && serverTasks.get(desc.toString()).after(desc.endTime)) {
             ready.getDescription().endTime.setTime(serverTasks.get(desc.toString()).getTime());
@@ -401,6 +409,10 @@ public class MeasurementScheduler extends Service {
           newTask.getDescription().startTime.setTime(newStartTime);
           tasksStatus.put(newTask.getTaskId(), TaskStatus.SCHEDULED);
           mainQueue.add(newTask);
+        }else{
+          if (desc.priority != MeasurementTask.USER_PRIORITY){
+            serverTasks.remove(desc.toString());
+          }
         }
 
         if (ready.getDescription().endTime.before(new Date())) {
@@ -409,17 +421,17 @@ public class MeasurementScheduler extends Service {
           intent.putExtra(UpdateIntent.TASK_STATUS_PAYLOAD, Config.TASK_CANCELED);
           MeasurementResult[] tempResults =
               MeasurementResult.getFailureResult(ready,
-                  new CancellationException("Task cancelled!"));
+                new CancellationException("Task cancelled!"));
           intent.putExtra(UpdateIntent.RESULT_PAYLOAD, tempResults);
           intent.putExtra(UpdateIntent.TASKID_PAYLOAD, ready.getTaskId());
           intent.putExtra(UpdateIntent.CLIENTKEY_PAYLOAD, ready.getKey());
           MeasurementScheduler.this.sendBroadcast(intent);
-          
-          if (desc.count == MeasurementTask.INFINITE_COUNT
-              && desc.priority == MeasurementTask.INVALID_PRIORITY) {
+
+          if (desc.priority != MeasurementTask.USER_PRIORITY) {
             serverTasks.remove(desc.toString());
           }
-          
+
+
           handleMeasurement();
         } else {
           Logger.e(ready.getDescription().getType() + " is gonna run");
@@ -442,10 +454,10 @@ public class MeasurementScheduler extends Service {
         if (waiting != null) {
           long timeFromExecution = task.timeFromExecution();
           measurementIntentSender = PendingIntent.getBroadcast(this, 0
-              , new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION)
-              , PendingIntent.FLAG_CANCEL_CURRENT);
+            , new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION)
+          , PendingIntent.FLAG_CANCEL_CURRENT);
           alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + timeFromExecution,
-              measurementIntentSender);
+            measurementIntentSender);
           setCurrentTask(null);// TODO
         }
 
@@ -480,7 +492,7 @@ public class MeasurementScheduler extends Service {
         &&
         newTask.getDescription().priority < current.getDescription().priority
         && new Date(current.getDuration() + getCurrentTaskStartTime().getTime()).after(newTask
-            .getDescription().endTime)) {
+          .getDescription().endTime)) {
       //finding the cuurent instance in pending tasks. we can call 
       //pause on that instance only
       if (pendingTasks.containsKey(current)) {
@@ -506,9 +518,9 @@ public class MeasurementScheduler extends Service {
             long timeFromExecution = newTask.timeFromExecution();
             measurementIntentSender = PendingIntent.getBroadcast(this, 0
               , new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION)
-              , PendingIntent.FLAG_CANCEL_CURRENT);
+            , PendingIntent.FLAG_CANCEL_CURRENT);
             alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
-                + timeFromExecution, measurementIntentSender);
+              + timeFromExecution, measurementIntentSender);
             setCurrentTask(newTask);
             setCurrentTaskStartTime(new Date(System.currentTimeMillis() + timeFromExecution));
           }
@@ -525,9 +537,9 @@ public class MeasurementScheduler extends Service {
             long timeFromExecution = newTask.timeFromExecution();
             measurementIntentSender = PendingIntent.getBroadcast(this, 0
               , new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION)
-              , PendingIntent.FLAG_CANCEL_CURRENT);
+            , PendingIntent.FLAG_CANCEL_CURRENT);
             alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
-                + timeFromExecution, measurementIntentSender);
+              + timeFromExecution, measurementIntentSender);
             // setCurrentTask(null);
             setCurrentTask(newTask);
             setCurrentTaskStartTime(new Date(System.currentTimeMillis() + timeFromExecution));
@@ -545,9 +557,9 @@ public class MeasurementScheduler extends Service {
           long timeFromExecution = newTask.timeFromExecution();
           measurementIntentSender = PendingIntent.getBroadcast(this, 0
             , new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION)
-            , PendingIntent.FLAG_CANCEL_CURRENT);
+          , PendingIntent.FLAG_CANCEL_CURRENT);
           alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + timeFromExecution,
-              measurementIntentSender);
+            measurementIntentSender);
           // setCurrentTask(null);
           setCurrentTask(newTask);
           setCurrentTaskStartTime(new Date(System.currentTimeMillis() + timeFromExecution));
@@ -565,7 +577,7 @@ public class MeasurementScheduler extends Service {
   }
 
   public synchronized boolean cancelTask(String taskId, String clientKey) {
-    
+
     if(clientKey.equals(Config.SERVER_TASK_CLIENT_KEY)){
       return false;
     }
@@ -592,7 +604,7 @@ public class MeasurementScheduler extends Service {
         MeasurementTask currentMeasurementTask = getCurrentTask();
         if ( currentMeasurementTask != null ) {
           Logger.i("current taskId " + currentMeasurementTask.getTaskId());
-          
+
           if (currentMeasurementTask.getTaskId().equals(taskId)
               && currentMeasurementTask.getKey().equals(clientKey)) {
             for (MeasurementTask mt : pendingTasks.keySet()) {
@@ -611,7 +623,7 @@ public class MeasurementScheduler extends Service {
     }
     return false;
   }
-  
+
   private void persistParams(String key, String value) {
     Logger.d("Scheduler persistParams called");
     SharedPreferences prefs =
@@ -623,7 +635,7 @@ public class MeasurementScheduler extends Service {
   /**
    * @param newBatteryThresh
    * @return the final value of battery threshold
- */
+   */
   //API should ensure that the value is between 0 and 100
   public synchronized int setBatteryThresh(boolean isForced, int newBatteryThresh){
     Logger.d("Scheduler->setBatteryThresh called");
@@ -638,7 +650,7 @@ public class MeasurementScheduler extends Service {
     }
     // Check whether out of boundary and same with old value
     if (newBatteryThresh >=min && newBatteryThresh <= max
-          && newBatteryThresh != this.batteryThreshold) {
+        && newBatteryThresh != this.batteryThreshold) {
       this.batteryThreshold = newBatteryThresh;
       Logger.i("Setting battery threshold to " + this.batteryThreshold + "%");
       persistParams(Config.PREF_KEY_BATTERY_THRESHOLD
@@ -646,7 +658,7 @@ public class MeasurementScheduler extends Service {
     }
     return this.batteryThreshold;
   }
-  
+
   /**
    * If the users have not specified the threshold, it will return the 
    * default value
@@ -682,7 +694,7 @@ public class MeasurementScheduler extends Service {
       // in PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC seconds
       checkinIntentSender = PendingIntent.getBroadcast(this, 0
         , new UpdateIntent(UpdateIntent.CHECKIN_ACTION)
-        , PendingIntent.FLAG_CANCEL_CURRENT);
+      , PendingIntent.FLAG_CANCEL_CURRENT);
       alarmManager.setRepeating(AlarmManager.RTC_WAKEUP
         , System.currentTimeMillis() + Config.PAUSE_BETWEEN_CHECKIN_CHANGE_MSEC
         , checkinIntervalSec * 1000, checkinIntentSender);
@@ -697,7 +709,7 @@ public class MeasurementScheduler extends Service {
     }
     return this.checkinIntervalSec;
   }
-  
+
   public synchronized void setDataUsageLimit(boolean isForced, DataUsageProfile profile){
     Logger.d("Scheduler->setDataUsageLimit called");
     int min = DataUsageProfile.PROFILE1.ordinal();
@@ -713,14 +725,14 @@ public class MeasurementScheduler extends Service {
         , this.dataUsageProfile.name());
     }
   }
-  
+
   public synchronized DataUsageProfile getDataUsageProfile(){
     if(this.dataUsageProfile.equals(DataUsageProfile.NOTASSIGNED)){
       return DataUsageProfile.PROFILE3;
     }
     return this.dataUsageProfile;
   }
-  
+
   public synchronized void setAuthenticateAccount(String selectedAccount) {
     Logger.d("Scheduler->setAuthenticateAccount called");
     if (selectedAccount != null) {
@@ -736,22 +748,28 @@ public class MeasurementScheduler extends Service {
       Logger.e("Error: " + selectedAccount + " doesn't match any account or anonymous");
     }
   }
-  
+
+  /**
+   * Get current authenticate account of Mobilyzer
+   * @return account in string if already set by clients(include Anonymous), or
+   *  null if havn't been set yet(it will checkin as anonymous user) 
+   */
   public synchronized String getAuthenticateAccount() {
     Logger.d("Scheduler->getAuthenticateAccount called");
     SharedPreferences prefs = 
         PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
     String selectedAccount = prefs.getString(Config.PREF_KEY_SELECTED_ACCOUNT, null);
+    Logger.i("Get authenticate account: " + selectedAccount);
     return selectedAccount;
   }
   /**
-  * Adjusts the frequency of the task based on the profile passed from the server.
-  *
-  * Alternately, disregards the task altogether, if a -1 is passed.
-  *
-  * @param task The task to adjust
-  * @return false if the task should not be scheduled, based on the profile
-  */
+   * Adjusts the frequency of the task based on the profile passed from the server.
+   *
+   * Alternately, disregards the task altogether, if a -1 is passed.
+   *
+   * @param task The task to adjust
+   * @return false if the task should not be scheduled, based on the profile
+   */
   private boolean adjustInterval(MeasurementTask task) {
 
     Map<String, String> params = task.getDescription().parameters;
@@ -786,9 +804,9 @@ public class MeasurementScheduler extends Service {
       Logger.i("Task " + task.getDescription().key + "marked for removal");
       return false;
     }
-//    if (!task.getType().equals(RRCTask.TYPE)) {
-//      return false;
-//    }
+    //    if (!task.getType().equals(RRCTask.TYPE)) {
+    //      return false;
+    //    }
     task.getDescription().intervalSec *= adjust;
     Calendar now = Calendar.getInstance();
     now.add(Calendar.SECOND, (int)task.getDescription().intervalSec);
@@ -851,8 +869,8 @@ public class MeasurementScheduler extends Service {
       Logger.d("Broadcasting result: taskId " + taskId);
       intent.setAction(UpdateIntent.SERVER_RESULT_ACTION);
     }    
-//    // Hongyi: for delay measurement
-//    intent.putExtra("ts_scheduler_send", System.currentTimeMillis());
+    //    // Hongyi: for delay measurement
+    //    intent.putExtra("ts_scheduler_send", System.currentTimeMillis());
     this.sendBroadcast(intent);
   }
 
@@ -861,7 +879,7 @@ public class MeasurementScheduler extends Service {
    */
   public synchronized void stopScheduler() {
     this.notifyAll();
-//    this.stopForeground(true);
+    //    this.stopForeground(true);
     this.stopSelf();
   }
 
@@ -911,166 +929,277 @@ public class MeasurementScheduler extends Service {
     // The new task schedule overrides the old one
 
     Logger.i("Received " + tasksFromServer.size() + " task(s) from server");
-    
+
     for (MeasurementTask task : tasksFromServer) {
       task.measurementDesc.key = Config.SERVER_TASK_CLIENT_KEY;
-      if (task.getDescription().count == MeasurementTask.INFINITE_COUNT) {
-        if (!serverTasks.containsKey(task.getDescription().toString())) {
-          if (adjustInterval(task)) {
+      if (adjustInterval(task)) {
+        if (task.getDescription().count == MeasurementTask.INFINITE_COUNT) {
+          if (!serverTasks.containsKey(task.getDescription().toString())) {
             this.mainQueue.add(task);
           }
+          serverTasks.put(task.getDescription().toString(), task.getDescription().endTime);
+        } else {
+            this.mainQueue.add(task);
         }
-        serverTasks.put(task.getDescription().toString(), task.getDescription().endTime);
-      } else {
-        if (adjustInterval(task)) {
-          this.mainQueue.add(task);
-        }
-
       }
+    }
+    saveSchedulerState();
+  }
+
+  /**
+   * Save the entire current schedule to a file, in JSON format, like how
+   * tasks are received from the server.
+   * 
+   * One item per line.
+   */
+  private void saveSchedulerState() {
+
+    try {
+      BufferedOutputStream writer =
+          new BufferedOutputStream(openFileOutput("schedule",
+            Context.MODE_PRIVATE));
+      MeasurementTask[] mainQueueArray= new MeasurementTask[0];
+      Logger.i("Saving schedule to a file...");
+      synchronized (mainQueue) {
+        mainQueueArray=(MeasurementTask[]) mainQueue.toArray();
+      }
+      
+      for (MeasurementTask entry : mainQueueArray) {
+        try {
+          JSONObject task =
+              MeasurementJsonConvertor.encodeToJson(entry.getDescription());
+          String taskstring = task.toString() + "\n";
+          writer.write(taskstring.getBytes());
+        } catch (JSONException e) {
+          e.printStackTrace();
+        }
+      }
+      
+      MeasurementTask[] waitingTasksArray= new MeasurementTask[0];
+      synchronized (pendingTasks) {
+        waitingTasksArray=(MeasurementTask[]) waitingTasksQueue.toArray();
+      }
+      
+      for (MeasurementTask entry : waitingTasksArray) {
+        try {
+          JSONObject task =
+              MeasurementJsonConvertor.encodeToJson(entry.getDescription());
+          String taskstring = task.toString() + "\n";
+          writer.write(taskstring.getBytes());
+        } catch (JSONException e) {
+          e.printStackTrace();
+        }
+      }
+      writer.close();
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  
+}
+
+/**
+ * Load the schedule from the schedule file, if it exists.
+ * 
+ * This is to be run when the app first starts up, so scheduled items
+ * are not lost.
+ */
+private void loadSchedulerState() {
+//  Vector<MeasurementTask> tasksToAdd = new Vector<MeasurementTask>();
+  synchronized (mainQueue) {
+    try {
+      Logger.i("Restoring schedule from disk...");
+      FileInputStream inputstream = openFileInput("schedule");
+      InputStreamReader streamreader = new InputStreamReader(inputstream);
+      BufferedReader bufferedreader = new BufferedReader(streamreader);
+
+      String line;
+      while ((line = bufferedreader.readLine()) != null) {
+        JSONObject jsonTask;
+        try {
+          jsonTask = new JSONObject(line);
+          MeasurementTask newTask =
+              MeasurementJsonConvertor.makeMeasurementTaskFromJson(jsonTask);
+
+          // If the task is scheduled in the past, re-schedule it in the future
+          // We assume tasks in the past have run, otherwise we can wind up getting
+          // stuck trying to run a large backlog of tasks
+
+          long curtime = System.currentTimeMillis();
+          if (curtime > newTask.getDescription().startTime.getTime()) {
+            long timediff = curtime - newTask.getDescription().startTime.getTime();               
+
+            timediff = (long) (timediff % (newTask.getDescription().intervalSec * 1000));
+            Calendar now = Calendar.getInstance();
+            now.add(Calendar.SECOND, (int) timediff/1000);
+            newTask.getDescription().startTime.setTime(now.getTimeInMillis());
+            Logger.i("Rescheduled task " + newTask.getDescription().key + 
+              " at time " + now.getTimeInMillis());
+          }
+
+          mainQueue.add(newTask);
+        } catch (JSONException e) {
+          e.printStackTrace();
+        }
+      }
+      handleMeasurement();
+      bufferedreader.close();
+      streamreader.close();
+      inputstream.close();
+
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+    } catch (IOException e) {
+      e.printStackTrace();
     }
   }
 
-  private void resetCheckin() {
-    // reset counters for checkin
-    checkinRetryCnt = 0;
-    checkinRetryIntervalSec = Config.MIN_CHECKIN_RETRY_INTERVAL_SEC;
-    checkin.initializeAccountSelector();
-  }
+}
 
-  private class CheckinTask implements Runnable {
-    @Override
-    public void run() {
-      Logger.i("checking Speedometer service for new tasks");
-      lastCheckinTime = Calendar.getInstance();
-      PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
-      try {
-        uploadResults();
-        getTasksFromServer();
-        // Also reset checkin if we get a success
-        resetCheckin();
-        // Schedule the new tasks
-        if (getCurrentTask() == null) {// TODO check this
-          alarmManager.cancel(measurementIntentSender);
-          handleMeasurement();
-        }
-        //
-      } catch (Exception e) {
+
+
+private void resetCheckin() {
+  // reset counters for checkin
+  checkinRetryCnt = 0;
+  checkinRetryIntervalSec = Config.MIN_CHECKIN_RETRY_INTERVAL_SEC;
+  checkin.initializeAccountSelector();
+}
+
+private class CheckinTask implements Runnable {
+  @Override
+  public void run() {
+    Logger.i("checking Speedometer service for new tasks");
+    lastCheckinTime = Calendar.getInstance();
+    PhoneUtils phoneUtils = PhoneUtils.getPhoneUtils();
+    try {
+      uploadResults();
+      getTasksFromServer();
+      // Also reset checkin if we get a success
+      resetCheckin();
+      // Schedule the new tasks
+      if (getCurrentTask() == null) {// TODO check this
+        alarmManager.cancel(measurementIntentSender);
+        handleMeasurement();
+      }
+      //
+    } catch (Exception e) {
+      /*
+       * Executor stops all subsequent execution of a periodic task if a raised exception is
+       * uncaught. We catch all undeclared exceptions here
+       */
+      Logger.e("Unexpected exceptions caught", e);
+      if (checkinRetryCnt > Config.MAX_CHECKIN_RETRY_COUNT) {
         /*
-         * Executor stops all subsequent execution of a periodic task if a raised exception is
-         * uncaught. We catch all undeclared exceptions here
+         * If we have retried more than MAX_CHECKIN_RETRY_COUNT times upon a checkin failure, we
+         * will stop retrying and wait until the next checkin period
          */
-        Logger.e("Unexpected exceptions caught", e);
-        if (checkinRetryCnt > Config.MAX_CHECKIN_RETRY_COUNT) {
-          /*
-           * If we have retried more than MAX_CHECKIN_RETRY_COUNT times upon a checkin failure, we
-           * will stop retrying and wait until the next checkin period
-           */
-          resetCheckin();
-        } else if (checkinRetryIntervalSec < checkinIntervalSec) {
-          Logger.i("Retrying checkin in " + checkinRetryIntervalSec + " seconds");
-          /*
-           * Use checkinRetryIntentSender so that the periodic checkin schedule will remain intact
-           */
-          checkinRetryIntentSender = PendingIntent.getBroadcast(
-            MeasurementScheduler.this, 0
-            , new UpdateIntent(UpdateIntent.CHECKIN_RETRY_ACTION)
-            , PendingIntent.FLAG_CANCEL_CURRENT);
-          alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
-              + checkinRetryIntervalSec * 1000, checkinRetryIntentSender);
-          checkinRetryCnt++;
-          checkinRetryIntervalSec =
-              Math.min(Config.MAX_CHECKIN_RETRY_INTERVAL_SEC, checkinRetryIntervalSec * 2);
-        }
-      } finally {
-        if ( phoneUtils != null ) {
-          phoneUtils.releaseWakeLock();
-        }
+        resetCheckin();
+      } else if (checkinRetryIntervalSec < checkinIntervalSec) {
+        Logger.i("Retrying checkin in " + checkinRetryIntervalSec + " seconds");
+        /*
+         * Use checkinRetryIntentSender so that the periodic checkin schedule will remain intact
+         */
+        checkinRetryIntentSender = PendingIntent.getBroadcast(
+          MeasurementScheduler.this, 0
+          , new UpdateIntent(UpdateIntent.CHECKIN_RETRY_ACTION)
+          , PendingIntent.FLAG_CANCEL_CURRENT);
+        alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis()
+          + checkinRetryIntervalSec * 1000, checkinRetryIntentSender);
+        checkinRetryCnt++;
+        checkinRetryIntervalSec =
+            Math.min(Config.MAX_CHECKIN_RETRY_INTERVAL_SEC, checkinRetryIntervalSec * 2);
+      }
+    } finally {
+      if ( phoneUtils != null ) {
+        phoneUtils.releaseWakeLock();
       }
     }
   }
+}
 
-  private void uploadResults() {
-    Vector<MeasurementResult> finishedTasks = new Vector<MeasurementResult>();
-    MeasurementResult[] results;
-    Future<MeasurementResult[]> future;
+private void uploadResults() {
+  Vector<MeasurementResult> finishedTasks = new Vector<MeasurementResult>();
+  MeasurementResult[] results;
+  Future<MeasurementResult[]> future;
 
-    synchronized (this.pendingTasks) {
-      try {
-        for (MeasurementTask task : this.pendingTasks.keySet()) {
-          future = this.pendingTasks.get(task);
-          if (future != null) {
-            if (future.isDone()) {
-              this.pendingTasks.remove(task);
-              if (future.isCancelled()) {
-                Logger.e("Task execution was canceled");
-                results =
-                    MeasurementResult.getFailureResult(task, new CancellationException(
-                      "Task cancelled"));
-                for (MeasurementResult r : results) {
-                  finishedTasks.add(r);
-                }
+  synchronized (this.pendingTasks) {
+    try {
+      for (MeasurementTask task : this.pendingTasks.keySet()) {
+        future = this.pendingTasks.get(task);
+        if (future != null) {
+          if (future.isDone()) {
+            this.pendingTasks.remove(task);
+            if (future.isCancelled()) {
+              Logger.e("Task execution was canceled");
+              results =
+                  MeasurementResult.getFailureResult(task, new CancellationException(
+                    "Task cancelled"));
+              for (MeasurementResult r : results) {
+                finishedTasks.add(r);
               }
             }
           }
         }
-      } catch (ConcurrentModificationException e) {
-        /*
-         * keySet is a synchronized view of the keys. However, changes during iteration will throw
-         * ConcurrentModificationException. Since we have synchronized all changes to pendingTasks
-         * this should not happen.
-         */
-        Logger.e("Pending tasks is changed during measurement upload");
       }
-    }
-
-    Logger.i("A total of " + finishedTasks.size() + " from pendingTasks is uploaded");
-    Logger.i("A total of " + this.pendingTasks.size() + " is in pendingTasks");
-
-    try {
-      for(MeasurementResult r: finishedTasks){
-        r.getMeasurementDesc().parameters=null;
-      }
-      this.checkin.uploadMeasurementResult(finishedTasks);
-    } catch (IOException e) {
-      Logger.e("Error when uploading message");
+    } catch (ConcurrentModificationException e) {
+      /*
+       * keySet is a synchronized view of the keys. However, changes during iteration will throw
+       * ConcurrentModificationException. Since we have synchronized all changes to pendingTasks
+       * this should not happen.
+       */
+      Logger.e("Pending tasks is changed during measurement upload");
     }
   }
 
+  Logger.i("A total of " + finishedTasks.size() + " from pendingTasks is uploaded");
+  Logger.i("A total of " + this.pendingTasks.size() + " is in pendingTasks");
 
-  /** Returns the last checkin time */
-  public synchronized Date getLastCheckinTime() {
-    if (lastCheckinTime != null) {
-      return lastCheckinTime.getTime();
-    } else {
-      return null;
+  try {
+    for(MeasurementResult r: finishedTasks){
+      r.getMeasurementDesc().parameters=null;
     }
+    this.checkin.uploadMeasurementResult(finishedTasks);
+  } catch (IOException e) {
+    Logger.e("Error when uploading message");
   }
+}
 
-  /** Returns the next (expected) checkin time */
-  public synchronized Date getNextCheckinTime() {
-    if (lastCheckinTime != null) {
-      Calendar nextCheckinTime = (Calendar) lastCheckinTime.clone();
-      nextCheckinTime.add(Calendar.SECOND, (int) getCheckinInterval());
-      return nextCheckinTime.getTime();
-    } else {
-      return null;
-    }
+
+/** Returns the last checkin time */
+public synchronized Date getLastCheckinTime() {
+  if (lastCheckinTime != null) {
+    return lastCheckinTime.getTime();
+  } else {
+    return null;
   }
+}
 
-  /**
-   * Perform a checkin operation.
+/** Returns the next (expected) checkin time */
+public synchronized Date getNextCheckinTime() {
+  if (lastCheckinTime != null) {
+    Calendar nextCheckinTime = (Calendar) lastCheckinTime.clone();
+    nextCheckinTime.add(Calendar.SECOND, (int) getCheckinInterval());
+    return nextCheckinTime.getTime();
+  } else {
+    return null;
+  }
+}
+
+/**
+ * Perform a checkin operation.
+ */
+public void handleCheckin() {
+  if ( PhoneUtils.getPhoneUtils().isCharging() == false
+      && PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() < getBatteryThresh()) {
+    Logger.e("Checkin skipped - below battery threshold " + getBatteryThresh());
+    return;
+  }
+  /*
+   * The CPU can go back to sleep immediately after onReceive() returns. Acquire the wake lock for
+   * the new thread here and release the lock when the thread finishes
    */
-  public void handleCheckin() {
-    if ( PhoneUtils.getPhoneUtils().isCharging() == false
-        && PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() < getBatteryThresh()) {
-      Logger.e("Checkin skipped - below battery threshold " + getBatteryThresh());
-      return;
-    }
-    /*
-     * The CPU can go back to sleep immediately after onReceive() returns. Acquire the wake lock for
-     * the new thread here and release the lock when the thread finishes
-     */
-    PhoneUtils.getPhoneUtils().acquireWakeLock();
-    new Thread(checkinTask).start();
-  }
+  PhoneUtils.getPhoneUtils().acquireWakeLock();
+  new Thread(checkinTask).start();
+}
 }
