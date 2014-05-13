@@ -1,16 +1,15 @@
-/* Copyright 2012 Google Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+/*
+ * Copyright 2012 Google Inc.
+ * 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package com.mobilyzer;
@@ -28,18 +27,18 @@ import java.io.FileReader;
 import java.io.IOException;
 
 /**
- * A basic power manager implementation that decides whether a measurement can be scheduled
- * based on the current battery level: no measurements will be scheduled if the current battery
- * is lower than a threshold.
+ * A basic power manager implementation that decides whether a measurement can be scheduled based on
+ * the current battery level: no measurements will be scheduled if the current battery is lower than
+ * a threshold.
  */
 public class ResourceCapManager {
 
-  
+
 
   /** The minimum threshold below which no measurements will be scheduled */
   private int minBatteryThreshold;
   private Context context = null;
-  private int dataLimit;//in Byte
+  private int dataLimit;// in Byte
   private DataUsageProfile dataUsageProfile;
 
   // Constants for how much data can be consumed under each profile
@@ -49,27 +48,27 @@ public class ResourceCapManager {
   private static int PROFILE3_LIMIT = 250 * 1024 * 1024;
   private static int PROFILE4_LIMIT = 500 * 1024 * 1024;
 
-  // Looking up various phone util data uses the network. 
+  // Looking up various phone util data uses the network.
   // It's hard to measure how much.
   // The good news is that this value is basically constant!
   public static int PHONEUTILCOST = 3 * 1024;
 
   public ResourceCapManager(int batteryThresh, Context context) {
     this.minBatteryThreshold = batteryThresh;
-    this.dataLimit=PROFILE3_LIMIT;
-    this.context=context;
-    this.dataUsageProfile=DataUsageProfile.PROFILE3;		
+    this.dataLimit = PROFILE3_LIMIT;
+    this.context = context;
+    this.dataUsageProfile = DataUsageProfile.PROFILE3;
   }
 
-  /** 
+  /**
    * Sets the minimum battery percentage below which measurements cannot be run.
    * 
    * @param batteryThresh the battery percentage threshold between 0 and 100
    */
   public synchronized void setBatteryThresh(int batteryThresh) throws IllegalArgumentException {
-    if (batteryThresh < 0 || batteryThresh > 100) {
-      throw new IllegalArgumentException("batteryCap must fall between 0 and 100, inclusive");
-    }
+    // if (batteryThresh < 0 || batteryThresh > 100) {
+    // throw new IllegalArgumentException("batteryCap must fall between 0 and 100, inclusive");
+    // }
     this.minBatteryThreshold = batteryThresh;
   }
 
@@ -78,32 +77,47 @@ public class ResourceCapManager {
   }
 
   /**
-   * Given a data profile string, set the data limit and profile code accordingly.
+   * Given a data profile, set the data limit and profile code accordingly.
    * 
    * If an invalid code is given, leave as default (250 MB) and print a warning.
    * 
    * @param dataLimitStr String describing the profile
    */
-  public synchronized void setDataUsageLimit(String dataLimitStr) {
-    if (dataLimitStr.equals("50 MB")) {
+  public synchronized void setDataUsageLimit(DataUsageProfile profile) {
+    // if (dataLimitStr.equals("50 MB")) {
+    // dataLimit = PROFILE1_LIMIT;
+    // dataUsageProfile = DataUsageProfile.PROFILE1;
+    // } else if (dataLimitStr.equals("100 MB")) {
+    // dataLimit = PROFILE2_LIMIT;
+    // dataUsageProfile = DataUsageProfile.PROFILE2;
+    // } else if (dataLimitStr.equals("250 MB")) {
+    // dataLimit = PROFILE3_LIMIT;
+    // dataUsageProfile = DataUsageProfile.PROFILE3;
+    // } else if (dataLimitStr.equals("500 MB")) {
+    // dataLimit = PROFILE4_LIMIT;
+    // dataUsageProfile = DataUsageProfile.PROFILE4;
+    // } else if (dataLimitStr.equals("Unlimited")) {
+    // dataLimit = UNLIMITED_LIMIT;
+    // dataUsageProfile = DataUsageProfile.UNLIMITED;
+    // } else {
+    // Logger.w("Specified limit " + dataLimitStr + " not found!");
+    // }
+    dataUsageProfile=profile;
+    if (profile.equals(DataUsageProfile.PROFILE1)) {
       dataLimit = PROFILE1_LIMIT;
-      dataUsageProfile = DataUsageProfile.PROFILE1;
-    } else if (dataLimitStr.equals("100 MB")) {
+    } else if (profile.equals(DataUsageProfile.PROFILE2)) {
       dataLimit = PROFILE2_LIMIT;
-      dataUsageProfile = DataUsageProfile.PROFILE2;
-    } else if (dataLimitStr.equals("250 MB")) {
+    } else if (profile.equals(DataUsageProfile.PROFILE3)) {
       dataLimit = PROFILE3_LIMIT;
-      dataUsageProfile = DataUsageProfile.PROFILE3;
-    } else if (dataLimitStr.equals("500 MB")) {
+    } else if (profile.equals(DataUsageProfile.PROFILE4)) {
       dataLimit = PROFILE4_LIMIT;
-      dataUsageProfile = DataUsageProfile.PROFILE4;
-    } else if (dataLimitStr.equals("Unlimited")) {
+    } else if (profile.equals(DataUsageProfile.UNLIMITED)) {
       dataLimit = UNLIMITED_LIMIT;
-      dataUsageProfile = DataUsageProfile.UNLIMITED;
     } else {
-      Logger.w("Specified limit " + dataLimitStr + " not found!");
+      Logger.w("Specified limit profile not found!");
     }
-  }	
+
+  }
 
   /**
    * @return The current data limit in bytes.
@@ -115,13 +129,13 @@ public class ResourceCapManager {
   /**
    * @return An enum representing the data usage limit.
    */
-  public synchronized DataUsageProfile getDataUsageProfile(){
+  public synchronized DataUsageProfile getDataUsageProfile() {
     return this.dataUsageProfile;
   }
 
   /**
-   * Reset the data used in the data usage file to 0.
-   * This should never be done unless the file does not exist.
+   * Reset the data used in the data usage file to 0. This should never be done unless the file does
+   * not exist.
    */
   private void resetDataUsage() {
     File file = new File(context.getFilesDir(), "datausage");
@@ -134,23 +148,20 @@ public class ResourceCapManager {
 
 
   /**
-   * Store the data used this period and the beginning of the period in a file,
-   * in the format [time reset, in seconds]_[bytes used].
+   * Store the data used this period and the beginning of the period in a file, in the format [time
+   * reset, in seconds]_[bytes used].
    * 
-   * Note that the data used can be negative, due to a underused data budget
-   * from last period.
+   * Note that the data used can be negative, due to a underused data budget from last period.
    * 
    * @param dataUsed The updated amount of data to write
    * @param time The updated time to write
    */
   private synchronized void writeDataUsageToFile(long dataUsed, long time) {
     try {
-      FileOutputStream outputStream =
-          context.openFileOutput("datausage", Context.MODE_PRIVATE);
+      FileOutputStream outputStream = context.openFileOutput("datausage", Context.MODE_PRIVATE);
       String usageStat = time + "_" + dataUsed;
       outputStream.write(usageStat.getBytes());
-      Logger.i("Updating data usage: " + dataUsed + " Byte used from "
-          + time);
+      Logger.i("Updating data usage: " + dataUsed + " Byte used from " + time);
       outputStream.close();
     } catch (IOException e) {
       Logger.e("Error in creating data usage file");
@@ -159,11 +170,11 @@ public class ResourceCapManager {
   }
 
   /**
-   * Read the usage data (start of usage period and quantity used in bytes)
-   * from the usage data file.
+   * Read the usage data (start of usage period and quantity used in bytes) from the usage data
+   * file.
    * 
-   * @return An array consisting of the start of the usage period, then the data 
-   * used so far.  If the file does not exist, returns -1 in each argument.
+   * @return An array consisting of the start of the usage period, then the data used so far. If the
+   *         file does not exist, returns -1 in each argument.
    */
   private synchronized long[] readUsageFromFile() {
     long[] retval = {-1, -1};
@@ -180,7 +191,7 @@ public class ResourceCapManager {
       }
       String[] toks = content.split("_");
       long usageStartTimeSec = Long.parseLong(toks[0]);
-      long dataUsed = Long.parseLong(toks[1]);  
+      long dataUsed = Long.parseLong(toks[1]);
 
       retval[0] = usageStartTimeSec;
       retval[1] = dataUsed;
@@ -191,14 +202,14 @@ public class ResourceCapManager {
       e.printStackTrace();
     }
     return retval;
-  }    
+  }
 
   /**
-   * Updates the data consumption period: using the current time move ahead to the
-   * correct data consumption period, and also update the data used so far.
+   * Updates the data consumption period: using the current time move ahead to the correct data
+   * consumption period, and also update the data used so far.
    * 
-   * Data assigned to a previous data period is subtracted; this can go below zero,
-   * effectively crediting unused data to future tasks.
+   * Data assigned to a previous data period is subtracted; this can go below zero, effectively
+   * crediting unused data to future tasks.
    * 
    * @param dataUsed Data consumed since the start of the last period
    * @param usageStartTimeSec Time since the start of the last period
@@ -207,20 +218,19 @@ public class ResourceCapManager {
   private long setNewDataConsumptionPeriod(long dataUsed, long usageStartTimeSec) {
     long time_per_period = Config.DEFAULT_DATA_MONITOR_PERIOD_DAY * 24 * 60 * 60;
 
-    Logger.i("Finished data consumption period that began at time:" + usageStartTimeSec + 
-      " having " +dataUsed + " consumed");
+    Logger.i("Finished data consumption period that began at time:" + usageStartTimeSec
+      + " having " + dataUsed + " consumed");
 
-    // Figure out how many periods have passed 
-    int periods = (int) (((float) ((long) (System.currentTimeMillis() / 1000) - usageStartTimeSec))
-        / (float) time_per_period);
+    // Figure out how many periods have passed
+    int periods =
+        (int) (((float) ((long) (System.currentTimeMillis() / 1000) - usageStartTimeSec)) / (float) time_per_period);
 
     // Update usageStarTimeSec to the appropriate period
     usageStartTimeSec += periods * time_per_period;
 
     // Discount from the data used data that is budgeted to previous periods.
     // Note that this could go less than zero if we are below budget.
-    long datalimit_per_period = (getDataLimit() * 
-        Config.DEFAULT_DATA_MONITOR_PERIOD_DAY) / 30;
+    long datalimit_per_period = (getDataLimit() * Config.DEFAULT_DATA_MONITOR_PERIOD_DAY) / 30;
     dataUsed = dataUsed - (((int) (periods)) * datalimit_per_period);
     Logger.i("Net data usage at start of period: " + dataUsed);
 
@@ -230,8 +240,8 @@ public class ResourceCapManager {
   }
 
   /**
-   * Helper function: given the beginning of the data usage period currrently 
-   * under consideration, determine if we're still in that period.
+   * Helper function: given the beginning of the data usage period currrently under consideration,
+   * determine if we're still in that period.
    * 
    * @param usageStartTimeSec The start of the last stored data usage period
    * @return True if we are still in the same data usage period.
@@ -239,21 +249,20 @@ public class ResourceCapManager {
   private boolean isInDataLimitPeriod(long usageStartTimeSec) {
     long timeSoFar = (System.currentTimeMillis() / 1000) - usageStartTimeSec;
     Logger.i("Time passed since data period last changed: " + timeSoFar);
-    return timeSoFar <= Config.DEFAULT_DATA_MONITOR_PERIOD_DAY * 24 * 60 * 60;        
+    return timeSoFar <= Config.DEFAULT_DATA_MONITOR_PERIOD_DAY * 24 * 60 * 60;
   }
 
   /**
    * Determines if the data limit has been exceeded.
    * 
-   * If there is no data limit, always returns false.
-   * If there is no valid data usage file,
-   * creates a new one and returns false.
+   * If there is no data limit, always returns false. If there is no valid data usage file, creates
+   * a new one and returns false.
    * 
-   * Otherwise, checks if we are over the limit yet or if we can run another task.
-   * If a new data period needs to be started, we do that too.     * 
+   * Otherwise, checks if we are over the limit yet or if we can run another task. If a new data
+   * period needs to be started, we do that too. *
    * 
-   * @param nextTaskType In the case of a TCP throughput task, we only run it if there is
-   * enough data left.
+   * @param nextTaskType In the case of a TCP throughput task, we only run it if there is enough
+   *        data left.
    * @return True if over the data limit
    * @throws IOException
    */
@@ -263,22 +272,21 @@ public class ResourceCapManager {
     if (getDataLimit() == UNLIMITED_LIMIT) {
       Logger.i("No data limit!");
       return false;
-    } 
+    }
     long[] usagedata = readUsageFromFile();
     long usageStartTimeSec = usagedata[0];
     long dataUsed = usagedata[1];
 
     if (usageStartTimeSec != -1) {
       if (!isInDataLimitPeriod(usageStartTimeSec)) {
-        // Update our file to the next period, and update our data usage 
+        // Update our file to the next period, and update our data usage
         // budget accordingly.
         dataUsed = setNewDataConsumptionPeriod(dataUsed, usageStartTimeSec);
-      }            
+      }
       long dataLimit = (getDataLimit() * Config.DEFAULT_DATA_MONITOR_PERIOD_DAY) / 30;
       Logger.i("Data limit is: " + dataLimit + " Data used is:" + dataUsed);
       if (dataUsed >= dataLimit) {
-        Logger.i("Exceeded data limit:  Total data limit:"
-            + getDataLimit());
+        Logger.i("Exceeded data limit:  Total data limit:" + getDataLimit());
         return true;
       } else {
         return false;
@@ -290,15 +298,13 @@ public class ResourceCapManager {
   }
 
   /**
-   * Determine how much data was consumed by a task and update the 
-   * data usage accordingly.
+   * Determine how much data was consumed by a task and update the data usage accordingly.
    * 
    * @param result Structure holding the measurement result from which we can extract data usage.
    * @param taskType The type of measurement task completed
    * @throws IOException
    */
-  public void updateDataUsage(long taskDataUsed)
-      throws IOException {
+  public void updateDataUsage(long taskDataUsed) throws IOException {
 
     Logger.i("Amount of data used in the last task: " + taskDataUsed);
 
@@ -308,12 +314,12 @@ public class ResourceCapManager {
     // If we have a valid file
     if (usageStartTimeSec != -1) {
       dataUsed += taskDataUsed;
-      if (! isInDataLimitPeriod(usageStartTimeSec)) {
+      if (!isInDataLimitPeriod(usageStartTimeSec)) {
         // If we are in a new data consumption period, update it
         setNewDataConsumptionPeriod(dataUsed, usageStartTimeSec);
       } else {
         // Otherwise just write to a file
-        writeDataUsageToFile(dataUsed, usageStartTimeSec);   
+        writeDataUsageToFile(dataUsed, usageStartTimeSec);
       }
     } else {
       // If we don't have a data usage file, initialize it with the data just used
@@ -326,12 +332,12 @@ public class ResourceCapManager {
 
 
 
-  /** 
+  /**
    * Returns whether a measurement can be run.
    */
   public synchronized boolean canScheduleExperiment() {
-    return (PhoneUtils.getPhoneUtils().isCharging() || 
-        PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() > minBatteryThreshold);
+    return (PhoneUtils.getPhoneUtils().isCharging() || PhoneUtils.getPhoneUtils()
+        .getCurrentBatteryLevel() > minBatteryThreshold);
   }
 
 }

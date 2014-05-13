@@ -723,6 +723,7 @@ public class MeasurementScheduler extends Service {
     if (profile.ordinal() >= min && profile.ordinal() <= max
         && profile != this.dataUsageProfile) {
       this.dataUsageProfile = profile;
+      resourceCapManager.setDataUsageLimit(profile);
       Logger.i("Setting data usage profile to " + this.dataUsageProfile);
       persistParams(Config.PREF_KEY_DATA_USAGE_PROFILE
         , this.dataUsageProfile.name());
@@ -1193,8 +1194,9 @@ public synchronized Date getNextCheckinTime() {
  * Perform a checkin operation.
  */
 public void handleCheckin() {
-  if ( PhoneUtils.getPhoneUtils().isCharging() == false
-      && PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() < getBatteryThresh()) {
+//  if ( PhoneUtils.getPhoneUtils().isCharging() == false
+//      && PhoneUtils.getPhoneUtils().getCurrentBatteryLevel() < getBatteryThresh()) {
+   if(!resourceCapManager.canScheduleExperiment()) {
     Logger.e("Checkin skipped - below battery threshold " + getBatteryThresh());
     return;
   }
