@@ -677,13 +677,11 @@ public class MeasurementScheduler extends Service {
 
   /** Set the interval for checkin in seconds */
   public synchronized long setCheckinInterval(boolean isForced, long interval) {
-    Logger.d("Scheduler->setCheckinInterval called");
+    Logger.d("Scheduler->setCheckinInterval called "+interval);
     long min = Config.MIN_CHECKIN_INTERVAL_SEC;
     long max = Config.MAX_CHECKIN_INTERVAL_SEC;
-    /**
-     *  If there are multiple apps registered, we gonna be conservative
-     *  Only allow raising the battery threshold  
-     */
+    
+    
     if (!isForced && this.checkinIntervalSec != -1) {
       min = this.batteryThreshold;
     }
@@ -813,8 +811,12 @@ public class MeasurementScheduler extends Service {
     //    }
     task.getDescription().intervalSec *= adjust;
     Calendar now = Calendar.getInstance();
-    now.add(Calendar.SECOND, (int)task.getDescription().intervalSec);
+    now.add(Calendar.SECOND, (int)(task.getDescription().intervalSec/10));
     task.getDescription().startTime = now.getTime();
+    if(task.getDescription().startTime.after(task.getDescription().endTime)){
+       task.getDescription().endTime=new Date(task.getDescription().startTime.getTime() + Config.TASK_EXPIRATION_MSEC);
+    }
+//    Logger.d(task.getDescription().startTime+" "+task.getDescription().endTime);
     return true;
 
   }
@@ -962,16 +964,16 @@ public class MeasurementScheduler extends Service {
       BufferedOutputStream writer =
           new BufferedOutputStream(openFileOutput("schedule",
             Context.MODE_PRIVATE));
-      MeasurementTask[] mainQueueArray= new MeasurementTask[0];
+      Object[] mainQueueArray= new Object[0];
       Logger.i("Saving schedule to a file...");
       synchronized (mainQueue) {
-        mainQueueArray=(MeasurementTask[]) mainQueue.toArray();
+        mainQueueArray= mainQueue.toArray();
       }
       
-      for (MeasurementTask entry : mainQueueArray) {
+      for (Object entry : mainQueueArray) {
         try {
           JSONObject task =
-              MeasurementJsonConvertor.encodeToJson(entry.getDescription());
+              MeasurementJsonConvertor.encodeToJson(((MeasurementTask)entry).getDescription());
           String taskstring = task.toString() + "\n";
           writer.write(taskstring.getBytes());
         } catch (JSONException e) {
@@ -979,15 +981,15 @@ public class MeasurementScheduler extends Service {
         }
       }
       
-      MeasurementTask[] waitingTasksArray= new MeasurementTask[0];
+      Object[] waitingTasksArray= new Object[0];
       synchronized (pendingTasks) {
-        waitingTasksArray=(MeasurementTask[]) waitingTasksQueue.toArray();
+        waitingTasksArray= waitingTasksQueue.toArray();
       }
       
-      for (MeasurementTask entry : waitingTasksArray) {
+      for (Object entry : waitingTasksArray) {
         try {
           JSONObject task =
-              MeasurementJsonConvertor.encodeToJson(entry.getDescription());
+              MeasurementJsonConvertor.encodeToJson(((MeasurementTask)entry).getDescription());
           String taskstring = task.toString() + "\n";
           writer.write(taskstring.getBytes());
         } catch (JSONException e) {
