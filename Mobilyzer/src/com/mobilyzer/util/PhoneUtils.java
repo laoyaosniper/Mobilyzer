@@ -268,6 +268,7 @@ public class PhoneUtils {
       connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
     if (networkInfo != null &&
         networkInfo.getState() == NetworkInfo.State.CONNECTED) {
+      Logger.d("Current Network: WIFI");
       return NETWORK_WIFI;
     } else {
       return getTelephonyNetworkType();
@@ -641,18 +642,23 @@ public class PhoneUtils {
     }
   }
   
-  /**
-   * When alerted that the network connectivity has changed, change the 
-   * stored connectivity value.
-   */
-  private class ConnectivityChangeReceiver extends BroadcastReceiver {
-
-    @Override
-    public void onReceive(Context context, Intent intent) {
-      updateConnectivityInfo();
-
-    }
-  }
+//TODO
+//  /**
+//   * When alerted that the network connectivity has changed, change the 
+//   * stored connectivity value.
+//   */
+//  private class ConnectivityChangeReceiver extends BroadcastReceiver {
+//    
+//    public ConnectivityChangeReceiver() {
+//      super();
+//    }
+//
+//    @Override
+//    public void onReceive(Context context, Intent intent) {
+//      updateConnectivityInfo();
+//
+//    }
+//  }
 
   public synchronized int getCurrentNetworkConnection() {
     return currentNetworkConnection;

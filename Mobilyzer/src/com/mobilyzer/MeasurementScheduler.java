@@ -40,13 +40,11 @@ import org.json.JSONObject;
 import com.mobilyzer.Config;
 import com.mobilyzer.MeasurementTask;
 import com.mobilyzer.UpdateIntent;
-import com.mobilyzer.measurements.RRCTask;
+import com.mobilyzer.gcm.GCMManager;
 import com.mobilyzer.util.Logger;
 import com.mobilyzer.util.PhoneUtils;
 import com.mobilyzer.util.MeasurementJsonConvertor;
 
-import android.accounts.Account;
-import android.accounts.AccountManager;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -119,6 +117,8 @@ public class MeasurementScheduler extends Service {
   private volatile ConcurrentHashMap<String, String> idToClientKey;
 
   private Messenger messenger;
+  
+  private GCMManager gcmManager;
 
   @Override
   public void onCreate() {
@@ -145,6 +145,8 @@ public class MeasurementScheduler extends Service {
     this.idToClientKey = new ConcurrentHashMap<String, String>();
 
     messenger = new Messenger(new APIRequestHandler(this));
+    
+    gcmManager= new GCMManager(this.getApplicationContext());
 
     this.setCurrentTask(null);
 
@@ -167,6 +169,7 @@ public class MeasurementScheduler extends Service {
     filter.addAction(UpdateIntent.CHECKIN_RETRY_ACTION);
     filter.addAction(UpdateIntent.MEASUREMENT_ACTION);
     filter.addAction(UpdateIntent.MEASUREMENT_PROGRESS_UPDATE_ACTION);
+    filter.addAction(UpdateIntent.GCM_MEASUREMENT_ACTION);
 
     broadcastReceiver = new BroadcastReceiver() {
 
@@ -175,7 +178,31 @@ public class MeasurementScheduler extends Service {
         Logger.d(intent.getAction() + " RECEIVED");
         if (intent.getAction().equals(UpdateIntent.MEASUREMENT_ACTION)) {
           handleMeasurement();
-        } else if (intent.getAction().equals(UpdateIntent.MEASUREMENT_PROGRESS_UPDATE_ACTION)) {
+        }else if (intent.getAction().equals(UpdateIntent.GCM_MEASUREMENT_ACTION)) {
+          try {
+            JSONObject json = new JSONObject(intent.getExtras().getString(UpdateIntent.MEASUREMENT_TASK_PAYLOAD));
+            Logger.d("MeasurementScheduler -> GCM: json task Value is " + json);
+            if (json != null && MeasurementTask.getMeasurementTypes().contains(json.get("type"))) {
+              
+              try {
+                MeasurementTask task = MeasurementJsonConvertor.makeMeasurementTaskFromJson(json);
+                task.getDescription().priority=0;
+                task.getDescription().startTime=new Date(System.currentTimeMillis());
+                task.getDescription().endTime=new Date(System.currentTimeMillis()+(60*1000));
+                task.generateTaskID();
+                task.getDescription().key = Config.SERVER_TASK_CLIENT_KEY;
+                submitTask(task);
+              } catch (IllegalArgumentException e) {
+                Logger.w("MeasurementScheduler -> GCM : Could not create task from JSON: " + e);
+              }
+            }
+ 
+          } catch (JSONException e) {
+            Logger.e("MeasurementSchedule -> GCMManager : Got exception during converting GCM json to MeasurementTask", e);
+          }
+
+          
+        }else if (intent.getAction().equals(UpdateIntent.MEASUREMENT_PROGRESS_UPDATE_ACTION)) {
           String taskid = intent.getStringExtra(UpdateIntent.TASKID_PAYLOAD);
           String taskKey = intent.getStringExtra(UpdateIntent.CLIENTKEY_PAYLOAD);
           int priority =
@@ -252,9 +279,9 @@ public class MeasurementScheduler extends Service {
       writer.write(result.getBytes());
       writer.close();
     } catch (FileNotFoundException e) {
-      Logger.e("", e);
+      Logger.e("saveResultToFile->", e);
     } catch (IOException e) {
-      Logger.e("", e);
+      Logger.e("saveResultToFile->", e);
     }
   }
 
@@ -274,6 +301,8 @@ public class MeasurementScheduler extends Service {
        */
       int currentAPIVersion = Integer.parseInt(Config.version); 
       int newAPIVersion = Integer.parseInt(intent.getStringExtra(UpdateIntent.VERSION_PAYLOAD));
+      
+      gcmManager.checkPlayServices();
       if ( currentAPIVersion < newAPIVersion) {
         Logger.e("Found scheduler version " + newAPIVersion
           + ", current version " + currentAPIVersion);
@@ -373,7 +402,7 @@ public class MeasurementScheduler extends Service {
 
   private synchronized void handleMeasurement() {
     try {
-      Logger.d("In handleMeasurement "+ mainQueue.size()+" "+waitingTasksQueue.size());
+      Logger.d("MeasurementScheduler -> In handleMeasurement "+ mainQueue.size()+" "+waitingTasksQueue.size());
       MeasurementTask task = mainQueue.peek();
       //update the waiting queue. It contains all the tasks that are ready
       //to be executed. Here we extract all those ready tasks from main queue
@@ -436,7 +465,7 @@ public class MeasurementScheduler extends Service {
 
           handleMeasurement();
         } else {
-          Logger.e(ready.getDescription().getType() + " is gonna run");
+          Logger.d("MeasurementScheduler -> "+ready.getDescription().getType() + " is gonna run");
           Future<MeasurementResult[]> future;
           setCurrentTask(ready);
           setCurrentTaskStartTime(Calendar.getInstance().getTime());
@@ -570,7 +599,7 @@ public class MeasurementScheduler extends Service {
     } else {
       mainQueue.add(newTask);
       if (current == null) {
-        Logger.e("submitTask: calling handleMeasurement");
+        Logger.d("submitTask: calling handleMeasurement");
         alarmManager.cancel(measurementIntentSender);
         handleMeasurement();
       }
@@ -931,7 +960,7 @@ public class MeasurementScheduler extends Service {
   private void getTasksFromServer() throws IOException {
     Logger.i("Downloading tasks from the server");
     checkin.getCookie();
-    List<MeasurementTask> tasksFromServer = checkin.checkin(resourceCapManager);
+    List<MeasurementTask> tasksFromServer = checkin.checkin(resourceCapManager,gcmManager);
     // The new task schedule overrides the old one
 
     Logger.i("Received " + tasksFromServer.size() + " task(s) from server");
@@ -998,9 +1027,9 @@ public class MeasurementScheduler extends Service {
       }
       writer.close();
     } catch (FileNotFoundException e) {
-      e.printStackTrace();
+      Logger.e("saveSchedulerState->", e);
     } catch (IOException e) {
-      e.printStackTrace();
+      Logger.e("saveSchedulerState->", e);
     }
   
 }

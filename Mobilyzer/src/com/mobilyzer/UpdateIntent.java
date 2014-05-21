@@ -37,6 +37,8 @@ public class UpdateIntent extends Intent {
       APP_PREFIX + ".CHECKIN_RETRY_ACTION";
   public static final String MEASUREMENT_PROGRESS_UPDATE_ACTION =
       APP_PREFIX + ".MEASUREMENT_PROGRESS_UPDATE_ACTION";
+  public static final String GCM_MEASUREMENT_ACTION =
+      APP_PREFIX + ".GCM_MEASUREMENT_ACTION";
   
   public static final String USER_RESULT_ACTION =
       PACKAGE_PREFIX + ".USER_RESULT_ACTION";  

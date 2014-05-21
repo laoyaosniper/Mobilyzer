@@ -45,6 +45,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.mobilyzer.gcm.GCMManager;
 import com.mobilyzer.util.Logger;
 import com.mobilyzer.util.MeasurementJsonConvertor;
 import com.mobilyzer.util.PhoneUtils;
@@ -113,7 +114,7 @@ public class Checkin {
     return this.lastCheckin;
   }
   
-  public List<MeasurementTask> checkin(ResourceCapManager resourceCapManager) throws IOException {
+  public List<MeasurementTask> checkin(ResourceCapManager resourceCapManager, GCMManager gcm) throws IOException {
     Logger.i("Checkin.checkin() called");
     boolean checkinSuccess = false;
     try {
@@ -128,12 +129,17 @@ public class Checkin {
        * TODO: checkin task don't belongs to any app. So we just fill
        * request_app field with server task key   
        */
-      status.put("properties", MeasurementJsonConvertor.encodeToJson(
-        phoneUtils.getDeviceProperty(Config.CHECKIN_KEY)));
+      
+      DeviceProperty deviceProperty=phoneUtils.getDeviceProperty(Config.CHECKIN_KEY);
+      deviceProperty.setRegistrationId(gcm.getRegistrationId());
+      
+      status.put("properties", MeasurementJsonConvertor.encodeToJson(deviceProperty));
       
       resourceCapManager.updateDataUsage(ResourceCapManager.PHONEUTILCOST);
       
       Logger.d(status.toString());
+      
+      Logger.d("Checkin: "+status.toString());
       
       
       String result = serviceRequest("checkin", status.toString());
@@ -195,7 +201,8 @@ public class Checkin {
 
     JSONArray results = new JSONArray();
     try {
-      Logger.i("Loading results from disk");
+      Logger.d("Loading results from disk: "+context.getFilesDir());
+      
       FileInputStream inputstream = context.openFileInput("results");
       InputStreamReader streamreader = new InputStreamReader(inputstream);
       BufferedReader bufferedreader = new BufferedReader(streamreader);

@@ -105,7 +105,8 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
         throw new MeasurementSkippedException("Not enough battery power");
       }
       
-      if (PhoneUtils.getPhoneUtils().getCurrentNetworkConnection()==PhoneUtils.TYPE_MOBILE){
+//      if (PhoneUtils.getPhoneUtils().getCurrentNetworkConnection()==PhoneUtils.TYPE_MOBILE){//TODO
+      if (PhoneUtils.getPhoneUtils().getNetwork()!=PhoneUtils.NETWORK_WIFI){
         try {
           if(rManager.isOverDataLimit(realTask.getMeasurementType())) {
             Logger.i("Skipping measurement - data limit is passed");
@@ -133,7 +134,8 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
           r.getDeviceProperty().ipConnectivity=contextCollector.ipConnectivity;
         }
         
-        if (PhoneUtils.getPhoneUtils().getCurrentNetworkConnection()==PhoneUtils.TYPE_MOBILE){
+//        if (PhoneUtils.getPhoneUtils().getCurrentNetworkConnection()==PhoneUtils.TYPE_MOBILE){//TODO
+          if (PhoneUtils.getPhoneUtils().getNetwork()!=PhoneUtils.NETWORK_WIFI){  
           rManager.updateDataUsage(realTask.getDataConsumed());
         }
         

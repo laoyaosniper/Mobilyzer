@@ -50,6 +50,8 @@ public class DeviceProperty implements Parcelable {
   public LinkedList<String> hostApps;
   // the app which requests this measurement
   public String requestApp;
+  
+  public String registrationId;
 
   public DeviceProperty(String deviceId, String appVersion, long timeStamp, 
       String osVersion, String ipConnectivity, String dnResolvability, 
@@ -139,6 +141,11 @@ public class DeviceProperty implements Parcelable {
     dest.writeString(requestApp);
   }
   
+  public void setRegistrationId(String regid){//TODO temporarily fix
+    this.registrationId=regid;
+  }
+
+  
 }
 
 class GeoLocation implements Parcelable {
@@ -177,4 +184,5 @@ class GeoLocation implements Parcelable {
     dest.writeDouble(longitude);
     dest.writeDouble(latitude);
   }
+  
 }
