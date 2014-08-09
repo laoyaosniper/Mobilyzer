@@ -138,7 +138,9 @@ public class ServerMeasurementTask implements Callable<MeasurementResult []> {
           if (PhoneUtils.getPhoneUtils().getNetwork()!=PhoneUtils.NETWORK_WIFI){  
           rManager.updateDataUsage(realTask.getDataConsumed());
         }
-        
+        if(realTask.getDescription().priority==MeasurementTask.GCM_PRIORITY){
+          this.scheduler.checkin.uploadGCMMeasurementResult(results[0], rManager);
+        }
         broadcastMeasurementEnd(results, null);
       } catch (MeasurementError e) {
         String error = "Server measurement " + realTask.getDescriptor() 

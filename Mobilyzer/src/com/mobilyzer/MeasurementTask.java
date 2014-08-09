@@ -31,6 +31,7 @@ public abstract class MeasurementTask
   public static final int USER_PRIORITY = Integer.MIN_VALUE;
   /* used for Server tasks */
   public static final int INVALID_PRIORITY = Integer.MAX_VALUE;
+  public static final int GCM_PRIORITY = 1234;//TODO just for testing
   public static final int INFINITE_COUNT = -1;
 
   private static HashMap<String, Class> measurementTypes;

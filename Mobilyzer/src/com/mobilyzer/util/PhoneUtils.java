@@ -274,6 +274,14 @@ public class PhoneUtils {
       return getTelephonyNetworkType();
     }
   }
+  
+  /** Returns the WiFi network state (NetworkInfo.State) */
+  public NetworkInfo.State getNetworkState() {
+    initNetwork();
+    NetworkInfo networkInfo =
+      connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+    return networkInfo.getState();
+  }
 
   private static final String[] NETWORK_TYPES = {
     "UNKNOWN",  // 0  - NETWORK_TYPE_UNKNOWN
@@ -623,25 +631,28 @@ public class PhoneUtils {
     }
   }
   
-  /**
-   * Fetches the new connectivity state from the connectivity manager directly.
-   */
-  private synchronized void updateConnectivityInfo() {
-    ConnectivityManager cm = (ConnectivityManager) context
-            .getSystemService(Context.CONNECTIVITY_SERVICE);
-    NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-    if (activeNetwork != null) {
-      if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
-        PhoneUtils.this.currentNetworkConnection = TYPE_WIFI;
-      }
-      if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
-        PhoneUtils.this.currentNetworkConnection = TYPE_MOBILE;
-      }
-    } else {
-      PhoneUtils.this.currentNetworkConnection = TYPE_NOT_CONNECTED;
-    }
-  }
-  
+//  /**
+//   * Fetches the new connectivity state from the connectivity manager directly.
+//   */
+//  private synchronized void updateConnectivityInfo() {
+//    ConnectivityManager cm = (ConnectivityManager) context
+//            .getSystemService(Context.CONNECTIVITY_SERVICE);
+//    NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+//    if (activeNetwork != null) {
+//      if (activeNetwork.getType() == ConnectivityManager.TYPE_WIFI) {
+//        PhoneUtils.this.currentNetworkConnection = TYPE_WIFI;
+//        Logger.i("currentNetworkConnection: TYPE_WIFI");
+//      }
+//      if (activeNetwork.getType() == ConnectivityManager.TYPE_MOBILE) {
+//        PhoneUtils.this.currentNetworkConnection = TYPE_MOBILE;
+//        Logger.i("currentNetworkConnection: TYPE_MOBILE");
+//      }
+//    } else {
+//      PhoneUtils.this.currentNetworkConnection = TYPE_NOT_CONNECTED;
+//      Logger.i("currentNetworkConnection: TYPE_NOT_CONNECTED");
+//    }
+//  }
+//  
 //TODO
 //  /**
 //   * When alerted that the network connectivity has changed, change the 
@@ -649,9 +660,9 @@ public class PhoneUtils {
 //   */
 //  private class ConnectivityChangeReceiver extends BroadcastReceiver {
 //    
-//    public ConnectivityChangeReceiver() {
-//      super();
-//    }
+////    public ConnectivityChangeReceiver() {
+////      super();
+////    }
 //
 //    @Override
 //    public void onReceive(Context context, Intent intent) {
@@ -659,10 +670,10 @@ public class PhoneUtils {
 //
 //    }
 //  }
-
-  public synchronized int getCurrentNetworkConnection() {
-    return currentNetworkConnection;
-  }
+//
+//  public synchronized int getCurrentNetworkConnection() {
+//    return currentNetworkConnection;
+//  }
   
   private String getVersionStr() {
     return String.format("INCREMENTAL:%s, RELEASE:%s, SDK_INT:%s",

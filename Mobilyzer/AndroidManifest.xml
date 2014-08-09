@@ -34,11 +34,11 @@
                 <action android:name="com.mobilyzer.MeasurementScheduler"></action>
             </intent-filter>
         </service>
-      <!--    <receiver android:name="com.mobilyzer.util.PhoneUtils$ConnectivityChangeReceiver">
+      <!-- <receiver android:name="com.mobilyzer.util.PhoneUtils$ConnectivityChangeReceiver">
     <intent-filter>
         <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
     </intent-filter>
-	</receiver> -->
+	</receiver> --> 
 	
     <receiver
             android:name="com.mobilyzer.gcm.GcmBroadcastReceiver"

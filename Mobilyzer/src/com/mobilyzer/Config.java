@@ -80,6 +80,7 @@ public interface Config {
   public static final int DEFAULT_PARALLEL_TASK_DURATION = 5 * 1000;
   public static final int DEFAULT_TASK_DURATION_TIMEOUT = 5 * 1000;
   public static final int DEFAULT_RRC_TASK_DURATION = 30 * 60 * 1000;
+  public static final int MAX_TASK_DURATION = 15 * 60 * 1000;//TODO
 
 
   // Keys in SharedPrefernce

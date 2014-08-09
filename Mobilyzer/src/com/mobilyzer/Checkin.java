@@ -85,10 +85,12 @@ public class Checkin {
   private volatile Cookie authCookie = null;
   private AccountSelector accountSelector = null;
   PhoneUtils phoneUtils;
+  String gcm_registraion_id;
   
   public Checkin(Context context) {
     phoneUtils = PhoneUtils.getPhoneUtils();
     this.context = context;
+    this.gcm_registraion_id="";
   }
 
   /** Shuts down the checkin thread */
@@ -117,6 +119,7 @@ public class Checkin {
   public List<MeasurementTask> checkin(ResourceCapManager resourceCapManager, GCMManager gcm) throws IOException {
     Logger.i("Checkin.checkin() called");
     boolean checkinSuccess = false;
+    gcm_registraion_id=gcm.getRegistrationId();
     try {
       JSONObject status = new JSONObject();
       DeviceInfo info = phoneUtils.getDeviceInfo();
@@ -132,6 +135,7 @@ public class Checkin {
       
       DeviceProperty deviceProperty=phoneUtils.getDeviceProperty(Config.CHECKIN_KEY);
       deviceProperty.setRegistrationId(gcm.getRegistrationId());
+      Logger.d("Checkin-> GCMManager: "+gcm.getRegistrationId());
       
       status.put("properties", MeasurementJsonConvertor.encodeToJson(deviceProperty));
       
@@ -261,6 +265,30 @@ public class Checkin {
       throw new IOException(e.getMessage());
     }
     Logger.i("TaskSchedule.uploadMeasurementResult() complete");
+    
+  }
+  
+  public void uploadGCMMeasurementResult(MeasurementResult result, ResourceCapManager resourceCapManager)
+      throws IOException {
+    JSONObject resultJson;
+    result.getDeviceProperty().registrationId=gcm_registraion_id;
+    try {
+      resultJson = MeasurementJsonConvertor.encodeToJson(result);
+      Logger.d("GCM Measurement result converted to json: "+resultJson.toString());
+      resourceCapManager.updateDataUsage(resultJson.toString().length());
+      String response = serviceRequest("postgcmmeasurement", resultJson.toString());
+      try {
+        JSONObject responseJson = new JSONObject(response);
+        if (!responseJson.getBoolean("success")) {
+          throw new IOException("Failure posting gcm measurement result");
+        }
+      } catch (JSONException e) {
+        throw new IOException(e.getMessage());
+      }
+    } catch (JSONException e1) {
+      Logger.d("TaskSchedule.uploadGCMMeasurementResult() complete");
+    }
+    Logger.d("TaskSchedule.uploadGCMMeasurementResult() complete");
     
   }
   
