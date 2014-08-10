@@ -252,7 +252,33 @@ public class Checkin {
       }
     }
     
-    Logger.i("TaskSchedule.uploadMeasurementResult() uploading: " + 
+    JSONArray chunckedArray= new JSONArray();
+    int i=0;
+    for (;i<resultArray.length();i++){
+      try {
+        chunckedArray.put(resultArray.getJSONObject(i));
+      } catch (JSONException e) {
+        Logger.e("Error when adding index " +i + " to array");
+      }
+      
+      if((i+1)%100==0){
+        Logger.d("uploading "+chunckedArray.length()+" measurements");
+        uploadChunkedArray(chunckedArray, resourceCapManager);
+        chunckedArray= new  JSONArray();
+      }
+    }
+    if(i%100!=0){
+      Logger.d("uploading "+chunckedArray.length()+" measurements");
+      uploadChunkedArray(chunckedArray, resourceCapManager);
+    }
+    Logger.i("TaskSchedule.uploadMeasurementResult() complete");
+    
+  }
+  
+  
+  private  void uploadChunkedArray(JSONArray resultArray, ResourceCapManager resourceCapManager)
+      throws IOException {
+    Logger.i("uploadChunkedArray uploading: " + 
         resultArray.toString());
     resourceCapManager.updateDataUsage(resultArray.toString().length());
     String response = serviceRequest("postmeasurement", resultArray.toString());
@@ -264,8 +290,6 @@ public class Checkin {
     } catch (JSONException e) {
       throw new IOException(e.getMessage());
     }
-    Logger.i("TaskSchedule.uploadMeasurementResult() complete");
-    
   }
   
   public void uploadGCMMeasurementResult(MeasurementResult result, ResourceCapManager resourceCapManager)

@@ -274,14 +274,20 @@ public class PhoneUtils {
       return getTelephonyNetworkType();
     }
   }
-  
-  /** Returns the WiFi network state (NetworkInfo.State) */
-  public NetworkInfo.State getNetworkState() {
+  /** Detect whether there is an Internet connection available */
+  public boolean isNetworkAvailable() {
     initNetwork();
-    NetworkInfo networkInfo =
-      connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
-    return networkInfo.getState();
-  }
+    NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+    return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+}
+  
+//  /** Returns the WiFi network state (NetworkInfo.State) */
+//  public NetworkInfo.State getNetworkState() {
+//    initNetwork();
+//    NetworkInfo networkInfo =
+//      connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
+//    return networkInfo.getState();
+//  }
 
   private static final String[] NETWORK_TYPES = {
     "UNKNOWN",  // 0  - NETWORK_TYPE_UNKNOWN

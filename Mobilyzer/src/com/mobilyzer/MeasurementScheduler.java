@@ -420,33 +420,37 @@ public class MeasurementScheduler extends Service {
       // to be executed. Here we extract all those ready tasks from main queue
       while (task != null && task.timeFromExecution() <= 0) {
         mainQueue.poll();
-        Logger.d(task.getDescription().key + " " + task.getDescription().type
+        
+        if(task.getDescription().getType().equals(RRCTask.TYPE) && phoneUtils.getNetwork().equals(PhoneUtils.NETWORK_WIFI)){
+          long updatedStartTime = System.currentTimeMillis() + (long) (5 * 60 * 1000);
+          task.getDescription().startTime.setTime(updatedStartTime);
+          mainQueue.add(task);
+          Logger.i("MeasurementScheduler: handleMeasurement: delaying RRC task on "+phoneUtils.getNetwork());
+          task = mainQueue.peek();
+          continue;
+        }
+        Logger.i("MeasurementScheduler: handleMeasurement: "+task.getDescription().key + " " + task.getDescription().type
             + " added to waiting list");
         waitingTasksQueue.add(task);
         task = mainQueue.peek();
       }
-      // TODO RRC tasks block the scheduler from running user tasks immediately, this temporary
-      // workaround is for solving this issue
-      if (waitingTasksQueue.size() != 0) {
-        MeasurementTask ready = waitingTasksQueue.poll();
-        MeasurementDesc readyDesc = ready.getDescription();
-        // if(readyDesc.getType().equals(RRCTask.TYPE) &&
-        // phoneUtils.getNetwork()==PhoneUtils.NETWORK_WIFI){
-        if ((readyDesc.getType().equals(RRCTask.TYPE) && phoneUtils.getNetwork().equals(PhoneUtils.NETWORK_WIFI))
-            || (phoneUtils.getNetworkState() != NetworkInfo.State.CONNECTED)) {
-//          waitingTasksQueue.poll();
-          Logger.e("MeasurementScheduler: handleMeasurement: delaying task " + readyDesc.getType()+" "+phoneUtils.getNetwork());
-          long updatedStartTime = readyDesc.startTime.getTime() + (long) (5 * 60 * 1000);
-          ready.getDescription().startTime.setTime(updatedStartTime);
-          mainQueue.add(ready);
-        }else{
-          waitingTasksQueue.add(ready);
-        }
+
+      
+      if(!phoneUtils.isNetworkAvailable()){
+        Logger.i("No connection is available, set an alarm for 5 min");
+        measurementIntentSender =
+            PendingIntent.getBroadcast(this, 0,
+                new UpdateIntent(UpdateIntent.MEASUREMENT_ACTION),
+                PendingIntent.FLAG_CANCEL_CURRENT);
+        alarmManager.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + (5*60*1000),
+          measurementIntentSender);
+        return;
       }
 
       if (waitingTasksQueue.size() != 0) {
         Logger.i("waiting list size is " + waitingTasksQueue.size());
         MeasurementTask ready = waitingTasksQueue.poll();
+        Logger.i("ready: " + ready.getDescription().getType());
 
         MeasurementDesc desc = ready.getDescription();
         long newStartTime = desc.startTime.getTime() + (long) desc.intervalSec * 1000;
@@ -1222,7 +1226,7 @@ public class MeasurementScheduler extends Service {
     Vector<MeasurementResult> finishedTasks = new Vector<MeasurementResult>();
     MeasurementResult[] results;
     Future<MeasurementResult[]> future;
-
+    Logger.d("pendingTasks: "+pendingTasks.size());
     synchronized (this.pendingTasks) {
       try {
         for (MeasurementTask task : this.pendingTasks.keySet()) {
@@ -1251,23 +1255,14 @@ public class MeasurementScheduler extends Service {
         Logger.e("Pending tasks is changed during measurement upload");
       }
     }
-
     Logger.i("A total of " + finishedTasks.size() + " from pendingTasks is uploaded");
     Logger.i("A total of " + this.pendingTasks.size() + " is in pendingTasks");
 
     try {
-      int task_index=0;
-      Vector<MeasurementResult> chunked= new  Vector<MeasurementResult>();
       for (MeasurementResult r : finishedTasks) {
         r.getMeasurementDesc().parameters = null;
-        chunked.add(r);
-        if(task_index%100==0){
-          this.checkin.uploadMeasurementResult(chunked, resourceCapManager);
-          chunked.clear();
-        }
-        task_index++;
       }
-//      this.checkin.uploadMeasurementResult(finishedTasks, resourceCapManager);
+      this.checkin.uploadMeasurementResult(finishedTasks, resourceCapManager);
     } catch (IOException e) {
       Logger.e("Error when uploading message");
     }
