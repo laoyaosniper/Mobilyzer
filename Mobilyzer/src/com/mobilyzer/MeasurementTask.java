@@ -10,6 +10,7 @@ import java.util.concurrent.Callable;
 import com.mobilyzer.exceptions.MeasurementError;
 import com.mobilyzer.measurements.DnsLookupTask;
 import com.mobilyzer.measurements.HttpTask;
+import com.mobilyzer.measurements.PageLoadTimeTask;
 import com.mobilyzer.measurements.PingTask;
 import com.mobilyzer.measurements.RRCTask;
 import com.mobilyzer.measurements.TCPThroughputTask;
@@ -54,6 +55,9 @@ public abstract class MeasurementTask
     measurementTypes.put(UDPBurstTask.TYPE, UDPBurstTask.class);
     measurementDescToType.put(UDPBurstTask.DESCRIPTOR, UDPBurstTask.TYPE);
     measurementTypes.put(RRCTask.TYPE, RRCTask.class);
+    measurementTypes.put(PageLoadTimeTask.TYPE, PageLoadTimeTask.class);
+//    measurementDescToType.put(PageLoadTimeTask.DESCRIPTOR, PageLoadTimeTask.TYPE);
+
     // Hongyi: RRCTask is not accessible by users. So we don't put RRC descriptor
     // and type into this map
 //    measurementDescToType.put(RRCTask.DESCRIPTOR, RRCTask.TYPE);

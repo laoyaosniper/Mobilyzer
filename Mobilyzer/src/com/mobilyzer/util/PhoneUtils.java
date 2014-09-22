@@ -41,6 +41,7 @@ import android.telephony.SignalStrength;
 import android.telephony.TelephonyManager;
 import android.view.Display;
 import android.view.WindowManager;
+
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetAddress;
@@ -54,6 +55,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+
+
 import com.mobilyzer.Config;
 import com.mobilyzer.DeviceInfo;
 import com.mobilyzer.DeviceProperty;
@@ -85,6 +88,11 @@ public class PhoneUtils {
    * @see #setGlobalContext(Context)
    */
   private static Context globalContext = null;
+  
+  /**
+   * Used by WebView instantiation 
+   */
+  private volatile Context appContext;
 
   /** A singleton instance of PhoneUtils. */
   private static PhoneUtils singletonPhoneUtils = null;
@@ -137,6 +145,8 @@ public class PhoneUtils {
   private int portNum = 6003;
   private int tcpTimeout = 3000;
   
+//  private MyWebView mWebView;
+  
   protected PhoneUtils(Context context) {
     this.context = context;
     broadcastReceiver = new PowerStateChangeReceiver();
@@ -144,6 +154,7 @@ public class PhoneUtils {
     Intent powerIntent = globalContext.registerReceiver(broadcastReceiver, 
         new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
     updateBatteryStat(powerIntent);
+//    this.mWebView=null;
   }
 
   /**
@@ -900,5 +911,8 @@ public class PhoneUtils {
         utils.getCurrentBatteryLevel(), utils.isCharging(), 
         utils.getCellInfo(false), utils.getCurrentRssi(),
         mobilyzerVersion, PhoneUtils.clientKeySet, requestApp);
-  }  
+  } 
+  
+  
+  
 }

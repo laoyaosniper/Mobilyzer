@@ -33,7 +33,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.PriorityBlockingQueue;
-import android.net.NetworkInfo;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -55,7 +54,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.net.NetworkInfo;
 import android.os.IBinder;
 import android.os.Messenger;
 import android.os.Parcelable;
@@ -123,11 +121,14 @@ public class MeasurementScheduler extends Service {
   private Messenger messenger;
 
   private GCMManager gcmManager;
-
+  
+  
   @Override
   public void onCreate() {
     Logger.d("MeasurementScheduler -> onCreate called");
     PhoneUtils.setGlobalContext(this.getApplicationContext());
+    
+    
 
     phoneUtils = PhoneUtils.getPhoneUtils();
     phoneUtils.registerSignalStrengthListener();
@@ -151,7 +152,7 @@ public class MeasurementScheduler extends Service {
     messenger = new Messenger(new APIRequestHandler(this));
 
     gcmManager = new GCMManager(this.getApplicationContext());
-
+    
     this.setCurrentTask(null);
     this.setCurrentTaskStartTime(null);
 
@@ -165,8 +166,18 @@ public class MeasurementScheduler extends Service {
     this.checkinIntervalSec = -1;
     this.dataUsageProfile = DataUsageProfile.NOTASSIGNED;
 
-    phoneUtils = PhoneUtils.getPhoneUtils();
-    loadSchedulerState();
+
+//    loadSchedulerState();//TODO(ASHKAN)
+    
+    
+//    final String[] MANDATORY_PAKS = {
+//            "webviewchromium.pak", "en-US.pak"
+//          };
+//    ResourceExtractor.setMandatoryPaksToExtract(MANDATORY_PAKS);
+//    ResourceExtractor.setExtractImplicitLocaleForTesting(false);
+//    AwBrowserProcess.loadLibrary();
+//    AwBrowserProcess.start(getApplicationContext());
+
 
     // Register activity specific BroadcastReceiver here
     IntentFilter filter = new IntentFilter();
@@ -175,6 +186,7 @@ public class MeasurementScheduler extends Service {
     filter.addAction(UpdateIntent.MEASUREMENT_ACTION);
     filter.addAction(UpdateIntent.MEASUREMENT_PROGRESS_UPDATE_ACTION);
     filter.addAction(UpdateIntent.GCM_MEASUREMENT_ACTION);
+    filter.addAction(UpdateIntent.PLT_MEASUREMENT_ACTION);
 
     broadcastReceiver = new BroadcastReceiver() {
 
@@ -183,6 +195,23 @@ public class MeasurementScheduler extends Service {
         Logger.d(intent.getAction() + " RECEIVED");
         if (intent.getAction().equals(UpdateIntent.MEASUREMENT_ACTION)) {
           handleMeasurement();
+//        } else if (intent.getAction().equals(UpdateIntent.PLT_MEASUREMENT_ACTION) && intent.hasExtra(UpdateIntent.PLT_TASK_PAYLOAD_URL)) {
+//          final String[] MANDATORY_PAKS = {
+//            "webviewchromium.pak", "en-US.pak"
+//          };
+//          ResourceExtractor.setMandatoryPaksToExtract(MANDATORY_PAKS);
+//        ResourceExtractor.setExtractImplicitLocaleForTesting(false);
+//          AwBrowserProcess.loadLibrary();
+//          AwBrowserProcess.start(getApplicationContext());
+        	
+        	
+        	
+//            MyWebView mWebview = new MyWebView(getApplicationContext());
+//          mWebview.getAwContents().clearCache(true);
+//          mWebview.getAwContents().getSettings().setJavaScriptEnabled(true);
+//          mWebview.getAwContents().loadUrl(new LoadUrlParams(intent.getStringExtra(UpdateIntent.PLT_TASK_PAYLOAD_URL)));
+       
+          
         } else if (intent.getAction().equals(UpdateIntent.GCM_MEASUREMENT_ACTION)) {
           try {
             JSONObject json =
@@ -284,6 +313,7 @@ public class MeasurementScheduler extends Service {
           new BufferedOutputStream(openFileOutput("results", Context.MODE_PRIVATE
               | Context.MODE_APPEND));
       result += "\n";
+      Logger.d("Measurement size in byte: "+result.length());
       writer.write(result.getBytes());
       writer.close();
     } catch (FileNotFoundException e) {
@@ -976,8 +1006,6 @@ public class MeasurementScheduler extends Service {
       Logger.d("Broadcasting result: taskId " + taskId);
       intent.setAction(UpdateIntent.SERVER_RESULT_ACTION);
     }
-    // // Hongyi: for delay measurement
-    // intent.putExtra("ts_scheduler_send", System.currentTimeMillis());
     this.sendBroadcast(intent);
   }
 
@@ -1050,7 +1078,7 @@ public class MeasurementScheduler extends Service {
         }
       }
     }
-    saveSchedulerState();
+//    saveSchedulerState();//TODO(ASHKAN)
   }
 
   /**
@@ -1132,6 +1160,11 @@ public class MeasurementScheduler extends Service {
             // stuck trying to run a large backlog of tasks
 
             long curtime = System.currentTimeMillis();
+            
+            if (curtime > newTask.getDescription().endTime.getTime()){
+            	continue;
+            }
+            
             if (curtime > newTask.getDescription().startTime.getTime()) {
               long timediff = curtime - newTask.getDescription().startTime.getTime();
 

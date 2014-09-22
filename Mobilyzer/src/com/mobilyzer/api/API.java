@@ -30,8 +30,6 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
-
-
 import android.os.Bundle;
 
 import com.mobilyzer.Config;
@@ -41,6 +39,8 @@ import com.mobilyzer.UpdateIntent;
 import com.mobilyzer.exceptions.MeasurementError;
 import com.mobilyzer.measurements.DnsLookupTask;
 import com.mobilyzer.measurements.HttpTask;
+import com.mobilyzer.measurements.PageLoadTimeTask;
+import com.mobilyzer.measurements.PageLoadTimeTask.PageLoadTimeDesc;
 import com.mobilyzer.measurements.ParallelTask;
 import com.mobilyzer.measurements.PingTask;
 import com.mobilyzer.measurements.SequentialTask;
@@ -67,7 +67,7 @@ import com.mobilyzer.util.Logger;
 public final class API {
   public enum TaskType {
     DNSLOOKUP, HTTP, PING, TRACEROUTE, TCPTHROUGHPUT, UDPBURST,
-    PARALLEL, SEQUENTIAL, INVALID
+    PARALLEL, SEQUENTIAL, INVALID, PLT
   }
 
   /**
@@ -294,6 +294,10 @@ public final class API {
         task = new UDPBurstTask(new UDPBurstDesc(clientKey, startTime, endTime
           , intervalSec, count, priority, contextIntervalSec, params));
         break;
+//      case PLT:
+//        task = new PageLoadTimeTask(new PageLoadTimeDesc(clientKey, startTime, endTime
+//          , intervalSec, count, priority, contextIntervalSec, params));
+//        break;
       default:
         throw new MeasurementError("Undefined measurement type. Candidate: " +
             "DNSLOOKUP, HTTP, PING, TRACEROUTE, TCPTHROUGHPUT, UDPBURST");

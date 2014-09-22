@@ -167,6 +167,7 @@ public class Checkin {
             MeasurementTask task = 
                 MeasurementJsonConvertor.makeMeasurementTaskFromJson(json);
             Logger.i(MeasurementJsonConvertor.toJsonString(task.measurementDesc));
+            
             schedule.add(task);
           } catch (IllegalArgumentException e) {
             Logger.w("Could not create task from JSON: " + e);

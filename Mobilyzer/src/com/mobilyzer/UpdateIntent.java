@@ -22,6 +22,16 @@ public class UpdateIntent extends Intent {
   public static final String DATA_USAGE_PAYLOAD = "DATA_USAGE_PAYLOAD";
   public static final String VERSION_PAYLOAD = "VERSION_PAYLOAD";
   public static final String AUTH_ACCOUNT_PAYLOAD = "AUTH_ACCOUNT_PAYLOAD";
+  public static final String PLT_TASK_PAYLOAD_URL = "PLT_TASK_PAYLOAD_URL";
+  public static final String PLT_TASK_PAYLOAD_STARTTIME = "PLT_TASK_PAYLOAD_STARTTIME";
+  public static final String PLT_TASK_PAYLOAD_TEST_TYPE = "PLT_TASK_PAYLOAD_TEST_TYPE";
+  public static final String PLT_TASK_PAYLOAD_RESULT_RES = "PLT_TASK_PAYLOAD_RESULT_RES";
+  public static final String PLT_TASK_PAYLOAD_RESULT_NAV = "PLT_TASK_PAYLOAD_RESULT_NAV";
+  public static final String PLT_TASK_PAYLOAD_BYTE_USED = "PLT_TASK_PAYLOAD_BYTE_USED";
+//  public static final String PLT_TASK_PAYLOAD_RESULT_NUM = "PLT_TASK_PAYLOAD_RESULT_NUM";
+//  public static final String PLT_TASK_PAYLOAD_CLOSE_ACTIVITY = "PLT_TASK_PAYLOAD_CLOSE_ACTIVITY";
+//  public static final String PLT_TASK_PAYLOAD_START_ACTIVITY = "PLT_TASK_PAYLOAD_START_ACTIVITY";
+  
   
   // Different types of actions that this intent can represent:
   private static final String PACKAGE_PREFIX =
@@ -39,6 +49,8 @@ public class UpdateIntent extends Intent {
       APP_PREFIX + ".MEASUREMENT_PROGRESS_UPDATE_ACTION";
   public static final String GCM_MEASUREMENT_ACTION =
       APP_PREFIX + ".GCM_MEASUREMENT_ACTION";
+  public static final String PLT_MEASUREMENT_ACTION =
+      APP_PREFIX + ".PLT_MEASUREMENT_ACTION";
   
   public static final String USER_RESULT_ACTION =
       PACKAGE_PREFIX + ".USER_RESULT_ACTION";  
